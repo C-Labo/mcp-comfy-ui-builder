@@ -34,19 +34,22 @@
 
 ***
 
-## Варіант 2: Інтерактивний wizard (після імплементації)
+## Варіант 2: Інтерактивний wizard (`add-node`)
 
 ```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
 npm run add-node
 ```
 
-Відповісти на питання (class name, INPUT_TYPES, author тощо) → система збере prompt для Claude → отримати JSON → підтвердити → додати в базу.
+1. Ввести **class name** ноди (наприклад `KSampler`).
+2. Система бере дані з ComfyUI (`GET /object_info`), формує промпт з шаблону `knowledge/node-description-prompt-template.md` і викликає Claude.
+3. Отриманий JSON додається в `knowledge/base-nodes.json`, оновлюються `node-compatibility.json` та CHANGELOG.
 
-**Деталі**: `scripts/add-node-interactive.md`
+Потрібно: ComfyUI запущений (`COMFYUI_HOST`), `ANTHROPIC_API_KEY`.
 
 ***
 
-## Варіант 3: Автоматичний скан (після імплементації)
+## Варіант 3: Автоматичний скан
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
@@ -54,6 +57,10 @@ npm run scan
 ```
 
 Система: підключиться до ComfyUI `/object_info`, знайде ноди, яких ще немає в базі, згенерує описи через Claude, оновить JSON і CHANGELOG.
+
+**Сухий прогон (без запису):** `npm run scan:dry`
+
+**Змінні оточення:** `COMFYUI_HOST` (за замовчуванням `http://127.0.0.1:8188`), `ANTHROPIC_API_KEY`, `NODE_BATCH_SIZE` (опційно), `DEBUG=1` для детального логу.
 
 ***
 
@@ -72,12 +79,24 @@ curl http://127.0.0.1:8188/object_info | jq '.KSampler'
 
 ***
 
-## Наступні кроки
+## Тести
 
-- **Повне розуміння**: SUMMARY.md → SYSTEM-DIAGRAM.md → comfyui-api-detailed-guide.md
-- **Імплементація**: IMPLEMENTATION-CHECKLIST.md → node-discovery-system.md
-- **Швидкий довідник**: QUICK-REFERENCE.md
+```bash
+npm test
+npm run test:watch
+```
+
+Тести: scanner, ai-generator, updater, MCP tools (unit), scan integration (mock).
 
 ***
 
-*Getting Started v1.1.0* | *2026-02-01*
+## Наступні кроки
+
+- **Навігація за задачею**: [doc/README.md](README.md)
+- **Повне розуміння**: [SUMMARY.md](SUMMARY.md) → [SYSTEM-DIAGRAM.md](SYSTEM-DIAGRAM.md)
+- **Швидкий довідник**: [QUICK-REFERENCE.md](QUICK-REFERENCE.md)
+- **MCP**: [MCP-SETUP.md](MCP-SETUP.md)
+
+***
+
+*Getting Started v1.2.0* | *2026-02-01*

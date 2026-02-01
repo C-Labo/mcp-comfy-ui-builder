@@ -1,0 +1,19 @@
+{
+  "display_name": "KSampler",
+  "category": "sampling",
+  "description": "Samples latent space using model and conditioning",
+  "input_types": {
+    "required": {
+      "model": { "type": "MODEL", "description": "Model" },
+      "positive": { "type": "CONDITIONING", "description": "Positive conditioning" },
+      "latent_image": { "type": "LATENT", "description": "Latent input" }
+    }
+  },
+  "return_types": ["LATENT"],
+  "return_names": ["LATENT"],
+  "output_colors": ["#FF6E6E"],
+  "use_cases": ["Denoising", "Sampling"],
+  "compatible_outputs": { "LATENT": ["VAEDecode"] },
+  "example_values": {},
+  "priority": "high"
+}

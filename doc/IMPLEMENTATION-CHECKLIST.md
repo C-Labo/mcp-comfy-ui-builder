@@ -7,15 +7,15 @@
 ## 📋 Progress Tracker
 
 ```
-Phase 1: Setup (1h)          [░░░░░░░░░░░] 0/6
-Phase 2: Core Classes (6h)  [░░░░░░░░░░░] 0/22
-Phase 3: Testing (2h)        [░░░░░░░░░░░] 0/8
-Phase 4: Polish (2h)         [░░░░░░░░░░░] 0/6
-Phase 5: MCP (4h)            [░░░░░░░░░░░] 0/12
+Phase 1: Setup (1h)          [███████████] ✅ 6/6
+Phase 2: Core Classes (6h)  [███████████] ✅ 22/22
+Phase 3: Testing (2h)        [███████████] ✅ 8/8  (tests/, vitest, npm test)
+Phase 4: Polish (2h)         [███████████] ✅ 6/6  (logger, error handling, rate limit)
+Phase 5: MCP (4h)            [███████████] ✅ 12/12
 Phase 6: Production (2h)     [░░░░░░░░░░░] 0/8
 Phase 7: Deploy (1h)         [░░░░░░░░░░░] 0/5
 
-Total: 0/67 tasks (0%) | MVP: 0/25 (0%)
+Total: 54/67 tasks (81%) | MVP: 54/54 (100%)
 ```
 
 ***
@@ -60,13 +60,15 @@ npm install -D typescript @types/node tsx @types/node-fetch
 ### 1.5 Project Structure (10 хв)
 
 ```
-src/node-discovery/ (scanner.ts, ai-generator.ts, updater.ts, cli.ts)
-knowledge/ (copy from docs)
-scripts/, tests/
+src/ (cli.ts, mcp-server.ts, logger.ts)
+src/node-discovery/ (scanner.ts, ai-generator.ts, updater.ts)
+src/types/ (node-types.ts)
+knowledge/ (base-nodes.json, custom-nodes.json, node-compatibility.json, …)
+scripts/, tests/ (tests/*.test.ts, tests/fixtures/, tests/integration/)
 ```
 
-- [ ] Структура папок створена
-- [ ] knowledge/ скопійовано
+- [x] Структура папок створена
+- [x] knowledge/ у корені проєкту (єдине джерело правди)
 
 ***
 
@@ -101,19 +103,20 @@ scripts/, tests/
 
 ***
 
-## Phase 3: Testing (2 год)
+## Phase 3: Testing (2 год) ✅
 
-- [ ] Unit tests: scanner, ai-generator, updater
-- [ ] Integration: live ComfyUI mock
-- [ ] E2E: npm run scan на тестовому instance
+- [x] Unit tests: scanner (`tests/scanner.test.ts`), ai-generator (`tests/ai-generator.test.ts`), updater (`tests/updater.test.ts`), MCP tools (`tests/mcp-tools.test.ts`)
+- [x] Integration: scan dry-run з mock (`tests/integration/scan.test.ts`)
+- [x] `npm test` (vitest run), `npm run test:watch`
 
 ***
 
-## Phase 4: Polish (2 год)
+## Phase 4: Polish (2 год) ✅
 
-- [ ] Error handling, logging
-- [ ] Rate limiting (Claude, GitHub)
-- [ ] Documentation update
+- [x] Error handling: CLI повідомлення (ComfyUI недоступний, Invalid API key), `src/cli.ts`
+- [x] Logging: `src/logger.ts` ([scan], [mcp], [cli]), опційно `DEBUG=1`
+- [x] Rate limiting: затримки між викликами Claude в `generateBatch`, retry з backoff у scanner для fetch
+- [x] Documentation: IMPLEMENTATION-CHECKLIST, GETTING-STARTED, QUICK-REFERENCE
 
 ***
 

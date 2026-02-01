@@ -1,0 +1,27 @@
+{
+  "KSampler": {
+    "input": {
+      "required": {
+        "model": ["MODEL"],
+        "positive": ["CONDITIONING"],
+        "negative": ["CONDITIONING"],
+        "latent_image": ["LATENT"],
+        "seed": ["INT"]
+      },
+      "optional": {},
+      "hidden": {}
+    },
+    "output": ["LATENT"],
+    "output_name": ["LATENT"],
+    "display_name": "KSampler",
+    "category": "sampling",
+    "description": "Sample latent"
+  },
+  "CheckpointLoaderSimple": {
+    "input": { "required": { "ckpt_name": ["CHECKPOINT_NAME"] }, "optional": {}, "hidden": {} },
+    "output": ["MODEL", "CLIP", "VAE"],
+    "output_name": ["MODEL", "CLIP", "VAE"],
+    "display_name": "Load Checkpoint",
+    "category": "loaders"
+  }
+}

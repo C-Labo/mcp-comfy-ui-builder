@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "comfy-ui-builder": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/TO/mcp-comfy-ui-builder/dist/mcp-server.js"]
+    }
+  }
+}

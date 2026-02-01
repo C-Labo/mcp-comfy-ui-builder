@@ -34,7 +34,7 @@
 | Файл | Призначення | Розмір |
 | :-- | :-- | :-- |
 | `knowledge/node-description-prompt-template.md` | Prompt для Claude | 373 рядки |
-| `scripts/add-node-interactive.md` | Wizard гайд | 536 рядків |
+| Wizard `add-node` | Описано в [GETTING-STARTED.md](GETTING-STARTED.md) (варіант 2) |
 
 ***
 

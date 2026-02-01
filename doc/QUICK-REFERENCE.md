@@ -30,6 +30,16 @@ npm run sync-manager
 npm run analyze https://github.com/WASasquatch/was-node-suite-comfyui
 ```
 
+### 🧪 Тести та MCP
+
+```bash
+npm test
+npm run test:watch
+npm run build && npm run mcp
+```
+
+**Змінні:** `COMFYUI_HOST`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN` (для analyze), `DEBUG=1` (детальний лог).
+
 ***
 
 ## 📁 Швидкий огляд файлів
@@ -105,4 +115,4 @@ curl http://127.0.0.1:8188/object_info | jq '.KSampler.input.required | keys'
 
 ***
 
-*Quick Reference v1.1.0* | *2026-02-01*
+*Quick Reference v1.2.0* | *2026-02-01*
