@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2026-02-01",
+    "total_packs": 16,
+    "source": "ComfyUI-Manager custom-node-list + manual"
+  },
+  "packs": [
+    {
+      "name": "ComfyUI-Manager",
+      "repo": "https://github.com/Comfy-Org/ComfyUI-Manager",
+      "author": "Comfy-Org",
+      "priority": "critical",
+      "description": "Install and manage custom nodes, update ComfyUI",
+      "key_nodes": [],
+      "use_cases": ["Installing custom nodes", "Updating ComfyUI", "Dependencies"]
+    },
+    {
+      "name": "WAS-Node-Suite",
+      "repo": "https://github.com/WASasquatch/was-node-suite-comfyui",
+      "author": "WASasquatch",
+      "priority": "high",
+      "description": "Utility nodes for images, text, logic, file ops",
+      "key_nodes": ["WAS_Image_Blend", "WAS_Text_Parser", "WAS_Image_Resize"],
+      "use_cases": ["Image blending", "Text parsing", "Logic flows", "File I/O"]
+    },
+    {
+      "name": "ComfyUI-Impact-Pack",
+      "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Pack",
+      "author": "ltdrdata",
+      "priority": "high",
+      "description": "Face detailing, segment anything, detectors",
+      "key_nodes": ["ImpactFaceDetailer", "ImpactSegmentAnything", "ImpactDetectorProvider"],
+      "use_cases": ["Face enhancement", "Segmentation", "Object detection"]
+    },
+    {
+      "name": "ComfyUI-IPAdapter-Plus",
+      "repo": "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
+      "author": "cubiq",
+      "priority": "high",
+      "description": "IP-Adapter for style/reference transfer",
+      "key_nodes": ["IPAdapterModelLoader", "IPAdapterApply", "IPAdapterApplyFaceID"],
+      "use_cases": ["Style transfer", "Reference image", "Face consistency"]
+    },
+    {
+      "name": "rgthree-comfy",
+      "repo": "https://github.com/rgthree/rgthree-comfy",
+      "author": "rgthree",
+      "priority": "high",
+      "description": "Power LoRA Loader, context menus, quality of life",
+      "key_nodes": ["RgthreePowerLoraLoader", "RgthreeContext", "RgthreeMux"],
+      "use_cases": ["LoRA stacking", "Context menus", "Workflow QoL"]
+    },
+    {
+      "name": "KJNodes",
+      "repo": "https://github.com/kijai/ComfyUI-KJNodes",
+      "author": "kijai",
+      "priority": "medium",
+      "description": "Get/Set nodes, logic, image utils",
+      "key_nodes": ["KJNodes_GetNode", "KJNodes_SetNode", "KJNodes_ImageBlend"],
+      "use_cases": ["Clean workflows", "Logic flow", "Image ops"]
+    },
+    {
+      "name": "ComfyUI-AnimateDiff-Evolved",
+      "repo": "https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved",
+      "author": "Kosinkadink",
+      "priority": "high",
+      "description": "AnimateDiff for video generation",
+      "key_nodes": ["ADE_AnimateDiffLoaderGen1", "ADE_ApplyAnimateDiffModelSimple", "ADE_EmptyLatentVideo"],
+      "use_cases": ["Video generation", "Animated LoRA", "Motion modules"]
+    },
+    {
+      "name": "ComfyUI-VideoHelperSuite",
+      "repo": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
+      "author": "Kosinkadink",
+      "priority": "high",
+      "description": "Video load/save, frame ops",
+      "key_nodes": ["VHS_LoadVideo", "VHS_SplitVideo", "VHS_CombineVideo"],
+      "use_cases": ["Video I/O", "Frame extraction", "Video composition"]
+    },
+    {
+      "name": "ComfyUI-Advanced-ControlNet",
+      "repo": "https://github.com/Kosinkadink/ComfyUI-Advanced-ControlNet",
+      "author": "Kosinkadink",
+      "priority": "medium",
+      "description": "Advanced ControlNet nodes",
+      "key_nodes": ["ACN_ControlNetLoader", "ACN_ApplyControlNet", "ACN_ApplyControlNetAdvanced"],
+      "use_cases": ["Advanced ControlNet", "Multi-ControlNet"]
+    },
+    {
+      "name": "ComfyUI-essentials",
+      "repo": "https://github.com/cubiq/ComfyUI_essentials",
+      "author": "cubiq",
+      "priority": "medium",
+      "description": "Crop, pad, mask, image utils",
+      "key_nodes": ["ImagePadForOutpaint", "FaceRestoreWithModel", "ImpactFaceDetailer"],
+      "use_cases": ["Outpaint", "Face restore", "Crop/pad"]
+    },
+    {
+      "name": "ComfyUI-InstantID",
+      "repo": "https://github.com/cubiq/ComfyUI_InstantID",
+      "author": "cubiq",
+      "priority": "medium",
+      "description": "InstantID for face-consistent generation",
+      "key_nodes": ["InstantIDModelLoader", "ApplyInstantID"],
+      "use_cases": ["Face consistency", "ID preservation"]
+    },
+    {
+      "name": "ComfyUI-Impact-Subpack",
+      "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Subpack",
+      "author": "ltdrdata",
+      "priority": "medium",
+      "description": "Impact subpack nodes",
+      "key_nodes": ["ImpactWildcardProcessor", "ImpactLoraLoader"],
+      "use_cases": ["Wildcards", "Impact LoRA"]
+    },
+    {
+      "name": "ComfyUI-Keyframing",
+      "repo": "https://github.com/Kosinkadink/ComfyUI-Keyframing",
+      "author": "Kosinkadink",
+      "priority": "medium",
+      "description": "Keyframe animation for video",
+      "key_nodes": ["KeyframeSchedule", "KeyframeInterpolation"],
+      "use_cases": ["Video keyframes", "Parameter animation"]
+    },
+    {
+      "name": "ComfyUI-Impact-Toolkit",
+      "repo": "https://github.com/ltdrdata/ComfyUI-Impact-Toolkit",
+      "author": "ltdrdata",
+      "priority": "low",
+      "description": "Impact toolkit utilities",
+      "key_nodes": [],
+      "use_cases": ["Impact workflows support"]
+    },
+    {
+      "name": "ComfyUI-OpenAI",
+      "repo": "https://github.com/Acly/comfyui-openai",
+      "author": "Acly",
+      "priority": "low",
+      "description": "OpenAI API integration",
+      "key_nodes": ["OpenAITextEncode", "OpenAIImageGen"],
+      "use_cases": ["GPT prompts", "DALL-E integration"]
+    },
+    {
+      "name": "ComfyUI-IF",
+      "repo": "https://github.com/cubiq/ComfyUI_IF",
+      "author": "cubiq",
+      "priority": "medium",
+      "description": "IF (DeepFloyd) model support",
+      "key_nodes": ["IF_UnetLoader", "IF_Stage1", "IF_Stage2"],
+      "use_cases": ["IF model", "DeepFloyd pipeline"]
+    }
+  ]
+}
