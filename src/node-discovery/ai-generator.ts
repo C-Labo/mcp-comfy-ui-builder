@@ -75,6 +75,26 @@ export function extractJson(text: string): NodeDescription {
   return parsed as NodeDescription;
 }
 
+/** Map Anthropic API errors to clear messages. */
+function wrapApiError(nodeName: string, e: unknown): Error {
+  const err = e as { status?: number; message?: string };
+  const msg = err?.message ?? String(e);
+  if (err?.status === 401 || err?.status === 403 || /invalid.*api.*key|authentication|unauthorized/i.test(msg)) {
+    return new Error(
+      `Invalid Anthropic API key. Check ANTHROPIC_API_KEY at https://console.anthropic.com/ (node: ${nodeName})`
+    );
+  }
+  if (err?.status === 429 || /rate limit|too many requests/i.test(msg)) {
+    return new Error(
+      `Claude API rate limit. Increase NODE_BATCH_SIZE delay or try again later (node: ${nodeName})`
+    );
+  }
+  if (err?.status && err.status >= 500) {
+    return new Error(`Claude API server error (${err.status}). Try again later (node: ${nodeName}).`);
+  }
+  return e instanceof Error ? e : new Error(`${msg} (node: ${nodeName})`);
+}
+
 /**
  * Call Claude to generate one NodeDescription from RawNodeInfo.
  */
@@ -88,16 +108,20 @@ export async function generateDescription(
   }
   const client = new Anthropic({ apiKey });
   const prompt = buildPrompt(rawNode);
-  const msg = await client.messages.create({
-    model: options.model ?? 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  const content = msg.content.find((c): c is { type: 'text'; text: string } => c.type === 'text');
-  if (!content?.text) {
-    throw new Error('Claude returned no text');
+  try {
+    const msg = await client.messages.create({
+      model: options.model ?? 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const content = msg.content.find((c): c is { type: 'text'; text: string } => c.type === 'text');
+    if (!content?.text) {
+      throw new Error('Claude returned no text');
+    }
+    return extractJson(content.text);
+  } catch (e) {
+    throw wrapApiError(rawNode.class_name, e);
   }
-  return extractJson(content.text);
 }
 
 /**
@@ -122,7 +146,8 @@ export async function generateBatch(
       const desc = await generateDescription(node, { apiKey: options.apiKey, model: options.model });
       results.set(node.class_name, desc);
     } catch (e) {
-      console.error(`[ai] generateDescription(${node.class_name}) failed:`, e);
+      const friendly = e instanceof Error ? e : new Error(String(e));
+      console.error(`[ai] generateDescription(${node.class_name}) failed:`, friendly.message);
     }
     // Rate limit: delay after each call to reduce 429 from Claude; extra delay every batchSize
     if (i < nodes.length - 1) {

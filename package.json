@@ -25,15 +25,15 @@
     "cursor",
     "claude"
   ],
-  "author": "",
+  "author": "MIt9",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/mcp-comfy-ui-builder.git"
+    "url": "https://github.com/MIt9/mcp-comfy-ui-builder.git"
   },
-  "homepage": "https://github.com/your-username/mcp-comfy-ui-builder#readme",
+  "homepage": "https://github.com/MIt9/mcp-comfy-ui-builder#readme",
   "bugs": {
-    "url": "https://github.com/your-username/mcp-comfy-ui-builder/issues"
+    "url": "https://github.com/MIt9/mcp-comfy-ui-builder/issues"
   },
   "files": [
     "dist",

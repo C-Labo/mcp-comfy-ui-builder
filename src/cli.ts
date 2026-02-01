@@ -10,6 +10,7 @@ import { createInterface } from 'node:readline';
 import { Octokit } from '@octokit/rest';
 import {
   scanLiveInstance,
+  checkComfyUIAvailable,
   findNewNodes,
   fetchManagerList,
   analyzeRepository,
@@ -27,7 +28,23 @@ function isNetworkError(e: unknown): boolean {
 
 function isAuthError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
-  return /401|403|Invalid API key|authentication|unauthorized/i.test(msg);
+  return /401|403|Invalid API key|authentication|unauthorized|invalid.*api.*key/i.test(msg);
+}
+
+/** Validate ANTHROPIC_API_KEY format; throws with a clear message if invalid. */
+function validateAnthropicApiKey(key: string | undefined): void {
+  if (!key || typeof key !== 'string') return;
+  const k = key.trim();
+  if (!k.startsWith('sk-ant-')) {
+    throw new Error(
+      'ANTHROPIC_API_KEY should start with "sk-ant-". Get your key at https://console.anthropic.com/'
+    );
+  }
+  if (k.length < 30) {
+    throw new Error(
+      'ANTHROPIC_API_KEY looks too short. Check your key at https://console.anthropic.com/'
+    );
+  }
 }
 
 const knowledgePath = () => join(process.cwd(), 'knowledge');
@@ -57,8 +74,17 @@ program
       logger.error('cli', 'ANTHROPIC_API_KEY is required for scan (or use --dry-run).');
       process.exit(1);
     }
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        validateAnthropicApiKey(process.env.ANTHROPIC_API_KEY);
+      } catch (e) {
+        logger.error('cli', e instanceof Error ? e.message : String(e));
+        process.exit(1);
+      }
+    }
     try {
       logger.info('cli', `Scanning ComfyUI at ${host} ...`);
+      await checkComfyUIAvailable(host);
       const liveMap = await scanLiveInstance(host);
       const existingKeys = getExistingKeys();
       const newNodes = findNewNodes(liveMap, existingKeys);
@@ -149,11 +175,17 @@ program
       logger.info('cli', `Found ${nodes.length} node(s): ${nodes.map((n) => n.class_name).join(', ')}`);
       if (nodes.length === 0) return;
       if (opts.generate) {
-        if (!process.env.ANTHROPIC_API_KEY) {
-          logger.error('cli', 'ANTHROPIC_API_KEY required for --generate.');
-          process.exit(1);
-        }
-        const results = await generateBatch(nodes);
+if (!process.env.ANTHROPIC_API_KEY) {
+        logger.error('cli', 'ANTHROPIC_API_KEY required for --generate.');
+        process.exit(1);
+      }
+      try {
+        validateAnthropicApiKey(process.env.ANTHROPIC_API_KEY);
+      } catch (e) {
+        logger.error('cli', e instanceof Error ? e.message : String(e));
+        process.exit(1);
+      }
+      const results = await generateBatch(nodes);
         const added: Array<{ className: string; description: import('./types/node-types.js').NodeDescription }> = [];
         for (const [className, desc] of results) {
           addNode(className, desc, true);
@@ -191,6 +223,7 @@ program
       }
       const host = process.env.COMFYUI_HOST ?? 'http://127.0.0.1:8188';
       logger.info('cli', `Fetching /object_info from ${host} ...`);
+      await checkComfyUIAvailable(host);
       const liveMap = await scanLiveInstance(host);
       const raw = liveMap.get(className);
       if (!raw) {
@@ -200,6 +233,13 @@ program
       }
       if (!process.env.ANTHROPIC_API_KEY) {
         logger.error('cli', 'ANTHROPIC_API_KEY required for add-node.');
+        rl.close();
+        process.exit(1);
+      }
+      try {
+        validateAnthropicApiKey(process.env.ANTHROPIC_API_KEY);
+      } catch (e) {
+        logger.error('cli', e instanceof Error ? e.message : String(e));
         rl.close();
         process.exit(1);
       }

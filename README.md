@@ -14,7 +14,7 @@
 1. **Clone and install dependencies**
 
    ```bash
-   git clone <repo-url> && cd mcp-comfy-ui-builder
+   git clone https://github.com/MIt9/mcp-comfy-ui-builder.git && cd mcp-comfy-ui-builder
    npm install
    ```
 
@@ -108,6 +108,19 @@ Add server to MCP settings (Cursor Settings → MCP or config):
 ```
 
 Replace `/ABSOLUTE/PATH/TO/mcp-comfy-ui-builder` with the full path to your project clone. Restart Cursor after config change.
+
+### Publish on GitHub
+
+1. Create a new repository on [GitHub](https://github.com/new): name `mcp-comfy-ui-builder`, visibility Public (or Private). Do **not** initialize with README, .gitignore, or license (project already has them).
+2. Add remote and push:
+
+   ```bash
+   git remote add origin https://github.com/MIt9/mcp-comfy-ui-builder.git
+   git branch -M main
+   git push -u origin main
+   ```
+
+3. If you fork this repo, replace `MIt9` with your GitHub username in the URLs above.
 
 ### Connect in Claude Desktop
 

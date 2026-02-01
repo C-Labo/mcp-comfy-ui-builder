@@ -55,7 +55,7 @@
 
 - [x] **Update package.json**
   - [x] Add repository URL (replace `your-username` with real GitHub username)
-  - [ ] Add author name
+  - [x] Add author name
   - [x] Add homepage, bugs URLs
   - [x] Add `files` field
 
@@ -66,14 +66,14 @@
 
 ### Error Handling
 
-- [ ] **Add validation**
-  - [ ] Check ComfyUI is running before scan
-  - [ ] Validate ANTHROPIC_API_KEY format
-  - [ ] Handle API errors gracefully
+- [x] **Add validation**
+  - [x] Check ComfyUI is running before scan
+  - [x] Validate ANTHROPIC_API_KEY format
+  - [x] Handle API errors gracefully
 
-- [ ] **Improve error messages**
-  - [ ] Clear messages for common errors
-  - [ ] Add suggestions for fixes
+- [x] **Improve error messages**
+  - [x] Clear messages for common errors
+  - [x] Add suggestions for fixes
 
 ---
 

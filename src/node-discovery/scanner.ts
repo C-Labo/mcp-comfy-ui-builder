@@ -56,6 +56,37 @@ export interface ManagerListResult {
   custom_nodes?: ManagerCustomNode[];
 }
 
+const COMFYUI_CHECK_TIMEOUT_MS = 8000;
+
+/**
+ * Check if ComfyUI is reachable at baseUrl. Throws with a clear message if not (e.g. not running, wrong host).
+ */
+export async function checkComfyUIAvailable(
+  baseUrl: string = process.env.COMFYUI_HOST ?? 'http://127.0.0.1:8188'
+): Promise<void> {
+  const url = `${baseUrl.replace(/\/$/, '')}/object_info`;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), COMFYUI_CHECK_TIMEOUT_MS);
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal as AbortSignal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      throw new Error(`ComfyUI returned ${res.status} ${res.statusText}. Is ComfyUI running at ${baseUrl}?`);
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('abort') || /ETIMEDOUT|ECONNREFUSED|ENOTFOUND|fetch failed/i.test(msg)) {
+      throw new Error(
+        `ComfyUI is not running at ${baseUrl}. Start ComfyUI and try again, or set COMFYUI_HOST to the correct URL.`
+      );
+    }
+    throw e;
+  }
+}
+
 /**
  * Fetch /object_info from a running ComfyUI instance and parse into Map<className, RawNodeInfo>.
  */
