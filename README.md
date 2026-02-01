@@ -64,6 +64,7 @@ Single entry point — **task-oriented navigation**:
 - **[doc/MCP-SETUP.md](doc/MCP-SETUP.md)** — connect MCP in Cursor/Claude
 - **Architecture:** [doc/node-discovery-system.md](doc/node-discovery-system.md), [doc/IMPLEMENTATION-CHECKLIST.md](doc/IMPLEMENTATION-CHECKLIST.md)
 - **Knowledge base:** [knowledge/README.md](knowledge/README.md), [doc/knowledge-base-usage-guide.md](doc/knowledge-base-usage-guide.md)
+- **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md)
 
 ## Requirements
 
