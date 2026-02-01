@@ -39,7 +39,7 @@ knowledge/
 ├── custom-nodes.json
 └── node-compatibility.json
 
-Documents: SUMMARY.md, QUICK-REFERENCE.md, GETTING-STARTED.md, SYSTEM-DIAGRAM.md
+Documents: INDEX.md, QUICK-REFERENCE.md, GETTING-STARTED.md
 ```
 
 ***

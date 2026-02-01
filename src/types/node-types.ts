@@ -1,6 +1,6 @@
 /**
  * Type definitions for Node Discovery System.
- * Aligned with doc/node-discovery-system.md and knowledge/base-nodes.json.
+ * Aligned with knowledge/base-nodes.json.
  */
 
 /** Raw node info as returned by ComfyUI /object_info (normalized). */

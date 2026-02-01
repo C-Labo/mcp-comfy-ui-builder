@@ -315,7 +315,8 @@ server.registerTool(
       const statusStr = (entry.status as { status_str?: string })?.status_str;
       if (statusStr) lines.push(`status: ${statusStr}`);
       for (const [nodeId, out] of Object.entries(outputs)) {
-        const images = (out as { images?: Array<{ filename: string; subfolder?: string }> }).images;
+        const nodeOut = out as { images?: Array<{ filename: string; subfolder?: string }>; text?: string[]; string?: string[] };
+        const images = nodeOut.images;
         if (images?.length) {
           lines.push(`node ${nodeId} images: ${images.map((i) => i.filename).join(', ')}`);
           const base = process.env.COMFYUI_HOST?.replace(/\/$/, '') ?? 'http://127.0.0.1:8188';
@@ -324,11 +325,56 @@ server.registerTool(
             lines.push(`  view: ${base}/view?filename=${encodeURIComponent(img.filename)}&type=output${sub}`);
           }
         }
+        const textOutput = nodeOut.text ?? nodeOut.string;
+        if (Array.isArray(textOutput) && textOutput.length) {
+          lines.push(`node ${nodeId} text: ${textOutput.join(' | ')}`);
+        } else if (typeof textOutput === 'string') {
+          lines.push(`node ${nodeId} text: ${textOutput}`);
+        }
       }
       return { content: [{ type: 'text', text: lines.join('\n') }] };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `get_execution_status failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'prepare_image_for_workflow',
+  {
+    description:
+      'Fetch the first output image from a completed prompt and upload it to ComfyUI input folder. Returns the filename to use in LoadImage for a follow-up workflow (e.g. image caption / verification). Use after get_execution_status confirms the prompt finished with image output. Requires COMFYUI_HOST.',
+    inputSchema: {
+      prompt_id: z.string().describe('Prompt id from execute_workflow (run must be completed with image output)'),
+    },
+  },
+  async (args) => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'ComfyUI is not configured. Set COMFYUI_HOST to use prepare_image_for_workflow.',
+          },
+        ],
+      };
+    }
+    try {
+      const result = await comfyui.prepareImageForWorkflow(args.prompt_id);
+      const nameForLoad = result.subfolder ? `${result.subfolder}/${result.name}` : result.name;
+      const text = [
+        `Image uploaded to input. Use in LoadImage:`,
+        `  image: "${result.name}"`,
+        result.subfolder ? `  (subfolder: ${result.subfolder})` : null,
+        `LoadImage typically expects "image" = filename; if your ComfyUI uses subfolders, use: ${nameForLoad}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+      return { content: [{ type: 'text', text }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `prepare_image_for_workflow failed: ${msg}` }] };
     }
   }
 );

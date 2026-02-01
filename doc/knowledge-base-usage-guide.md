@@ -378,28 +378,14 @@ function NodeSearch({ onSelect }: { onSelect: (node: NodeInfo) => void }) {
 
 ***
 
-## 🔄 Auto-updating Knowledge Base
-
-### Watcher script
-
-```typescript
-// watch-knowledge.ts
-import chokidar from 'chokidar';
-import { KnowledgeBaseUpdater } from './node-discovery/updater';
-
-const updater = new KnowledgeBaseUpdater();
-
-chokidar.watch('ComfyUI/custom_nodes').on('addDir', async () => {
-  console.log('New custom nodes detected, rescanning...');
-  await updater.scanAndUpdate();
-});
-```
-
-### Cron job
+## 🔄 Updating Knowledge Base
 
 ```bash
-# ~/.crontab
-0 2 * * 0 cd /path/to/project && npm run scan
+# Fill from seed (merge or --force overwrite)
+npm run seed
+
+# Update custom packs list from ComfyUI-Manager
+npm run sync-manager
 ```
 
 ***
@@ -446,12 +432,7 @@ const starterNodes = Object.values(knowledgeBase.base.nodes)
 // 2. Image processing pipeline
 const imageNodes = findByCategory('image');
 
-// 3. What's new (compare with ComfyUI API)
-const liveNodes = await scanner.scanLiveInstance();
-const newNodes = Array.from(liveNodes.keys())
-  .filter(name => !knowledgeBase.base.nodes[name]);
-
-// 4. Popular custom nodes
+// 3. Popular custom nodes
 const popularCustom = Object.values(knowledgeBase.custom.node_packs)
   .filter((pack: any) => pack.priority === 'high');
 ```
@@ -504,12 +485,11 @@ Load JSON on startup
 Manual updates via git pull
 ```
 
-### 2. **Live sync** (recommended)
+### 2. **Periodic update**
 
 ```
-npm run scan -- --cron
-Auto-update knowledge base
-Restart services on major changes
+npm run seed && npm run sync-manager
+Update knowledge from seed and ComfyUI-Manager; restart services on major changes
 ```
 
 ### 3. **Distributed** (production)

@@ -142,6 +142,15 @@
       "use_cases": ["GPT prompts", "DALL-E integration"]
     },
     {
+      "name": "ComfyUI-Blip",
+      "repo": "https://github.com/1038lab/ComfyUI-Blip",
+      "author": "1038lab",
+      "priority": "medium",
+      "description": "Image-to-text caption using BLIP (lightweight, GPU/CPU)",
+      "key_nodes": ["BLIPCaption"],
+      "use_cases": ["Image caption", "Generate-and-verify pipeline", "Describe generated images"]
+    },
+    {
       "name": "ComfyUI-IF",
       "repo": "https://github.com/cubiq/ComfyUI_IF",
       "author": "cubiq",

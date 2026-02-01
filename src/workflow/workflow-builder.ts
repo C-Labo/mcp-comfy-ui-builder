@@ -30,6 +30,11 @@ export type Img2ImgParams = {
   denoise?: number;
 };
 
+/** Params for image_caption template (requires custom node e.g. ComfyUI-Blip or comfyui-art-venture). */
+export type ImageCaptionParams = {
+  image?: string;
+};
+
 const DEFAULT_TXT2IMG = {
   width: 1024,
   height: 1024,
@@ -154,9 +159,30 @@ function buildTxt2Img(params: Txt2ImgParams): ComfyUIWorkflow {
   return nodes;
 }
 
+/**
+ * Build image-to-caption workflow: LoadImage → BLIPCaption (or similar).
+ * Requires a custom node pack that provides a caption node (e.g. ComfyUI-Blip, comfyui-art-venture, img2txt-comfyui-nodes).
+ * If your pack uses a different class_type, build the workflow manually or use suggest_nodes.
+ */
+function buildImageCaption(params: ImageCaptionParams): ComfyUIWorkflow {
+  const image = params.image ?? 'input.png';
+  const nodes: Record<string, ComfyUINodeDef> = {
+    '1': {
+      class_type: 'LoadImage',
+      inputs: { image },
+    },
+    '2': {
+      class_type: 'BLIPCaption',
+      inputs: { image: ['1', 0] },
+    },
+  };
+  return nodes;
+}
+
 const TEMPLATES: Record<string, (params: Record<string, unknown>) => ComfyUIWorkflow> = {
   txt2img: (params) => buildTxt2Img(params as Txt2ImgParams),
   img2img: (params) => buildImg2Img(params as Img2ImgParams),
+  image_caption: (params) => buildImageCaption(params as ImageCaptionParams),
 };
 
 /**

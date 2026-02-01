@@ -7,6 +7,7 @@ import type {
   ComfyUIWorkflow,
   SubmitPromptResponse,
   HistoryEntry,
+  HistoryNodeOutput,
   QueueStatus,
 } from './types/comfyui-api-types.js';
 
@@ -158,4 +159,99 @@ export async function deleteQueueItems(promptIds: string[]): Promise<void> {
  */
 export function isComfyUIConfigured(): boolean {
   return true;
+}
+
+/** First image from history entry for a prompt (filename + subfolder + type). */
+export interface OutputImageRef {
+  filename: string;
+  subfolder?: string;
+  type?: string;
+}
+
+/**
+ * Get the first output image reference from history for a prompt.
+ * Use with fetchOutputImageBytes then uploadImage to reuse in another workflow.
+ */
+export function getFirstOutputImageRef(entries: HistoryEntry[]): OutputImageRef | null {
+  if (!entries.length) return null;
+  const outputs = entries[0].outputs ?? {};
+  for (const out of Object.values(outputs)) {
+    const images = (out as HistoryNodeOutput).images;
+    if (images?.length) {
+      const img = images[0];
+      return {
+        filename: img.filename,
+        subfolder: img.subfolder,
+        type: img.type ?? 'output',
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch image bytes from ComfyUI /view for a given prompt_id.
+ * Returns buffer and suggested filename for upload. Fails if prompt has no image output.
+ */
+export async function fetchOutputImageBytes(promptId: string): Promise<{ bytes: ArrayBuffer; filename: string }> {
+  const entries = await getHistory(promptId);
+  const ref = getFirstOutputImageRef(entries);
+  if (!ref) {
+    throw new Error(`No image output found in history for prompt_id: ${promptId}`);
+  }
+  const base = getBaseUrl().replace(/\/$/, '');
+  const params = new URLSearchParams({
+    filename: ref.filename,
+    type: ref.type ?? 'output',
+    ...(ref.subfolder ? { subfolder: ref.subfolder } : {}),
+  });
+  const url = `${base}/view?${params.toString()}`;
+  const res = await fetchWithRetry(url, { method: 'GET' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI /view failed (${res.status}): ${text || res.statusText}`);
+  }
+  const bytes = await res.arrayBuffer();
+  return { bytes, filename: ref.filename };
+}
+
+/** Response from POST /upload/image. */
+export interface UploadImageResponse {
+  name: string;
+  subfolder: string;
+  type: string;
+}
+
+/**
+ * Upload image bytes to ComfyUI input folder. POST /upload/image (multipart).
+ * Returns the filename to use in LoadImage (name; subfolder may be needed for nested paths).
+ */
+export async function uploadImage(imageBytes: ArrayBuffer, suggestedFilename: string): Promise<UploadImageResponse> {
+  const form = new FormData();
+  const blob = new Blob([imageBytes], { type: 'image/png' });
+  form.append('image', blob, suggestedFilename);
+  const res = await fetch(normalizeUrl('upload/image'), {
+    method: 'POST',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    body: form as any,
+    headers: {}, // do not set Content-Type; FormData sets multipart boundary
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI /upload/image failed (${res.status}): ${text || res.statusText}`);
+  }
+  const data = (await res.json()) as UploadImageResponse;
+  if (!data?.name) {
+    throw new Error('ComfyUI /upload/image did not return name');
+  }
+  return data;
+}
+
+/**
+ * Fetch the first output image from a completed prompt and upload it to ComfyUI input.
+ * Returns the filename to use in LoadImage for a follow-up workflow (e.g. image caption / verify).
+ */
+export async function prepareImageForWorkflow(promptId: string): Promise<UploadImageResponse> {
+  const { bytes, filename } = await fetchOutputImageBytes(promptId);
+  return uploadImage(bytes, filename);
 }

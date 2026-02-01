@@ -4,6 +4,23 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [0.1.3] – 2026-02-02
+
+### Added
+
+- **Generate-and-verify pipeline:** `prepare_image_for_workflow(prompt_id)` — fetch first output image from a run and upload to ComfyUI input for follow-up workflows (e.g. image caption / verification).
+- **Template `image_caption`:** LoadImage → BLIPCaption for image-to-text; requires custom node pack (ComfyUI-Blip, comfyui-art-venture, or img2txt-comfyui-nodes).
+- **Doc:** [GENERATE-AND-VERIFY.md](doc/GENERATE-AND-VERIFY.md) — flow: generate → get image → verify (caption in ComfyUI or external Vision API) → compare to expectation.
+- **ComfyUI client:** `fetchOutputImageBytes`, `uploadImage`, `prepareImageForWorkflow`; `getFirstOutputImageRef`.
+- **get_execution_status:** now returns text outputs from nodes (e.g. BLIP caption) when present.
+- **Knowledge:** ComfyUI-Blip pack in custom-nodes.json.
+
+### Changed
+
+- workflow-builder.md: image_caption template; INDEX link to GENERATE-AND-VERIFY.
+
+---
+
 ## [0.1.2] – 2026-02-02
 
 ### Changed

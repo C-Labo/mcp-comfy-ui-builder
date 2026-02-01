@@ -76,6 +76,16 @@ Image-to-image: LoadImage → VAEEncode → CheckpointLoaderSimple → CLIPTextE
 
 Example: `build_workflow("img2img", { image: "photo.png", prompt: "oil painting style", denoise: 0.6 })`.
 
+### image_caption
+
+Image-to-text (caption): LoadImage → BLIPCaption. **Requires a custom node pack** (e.g. [ComfyUI-Blip](https://github.com/1038lab/ComfyUI-Blip), comfyui-art-venture, or img2txt-comfyui-nodes). Use after **prepare_image_for_workflow(prompt_id)** to verify a generated image.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| image | string | input.png | Input image filename (e.g. from prepare_image_for_workflow) |
+
+Example: `build_workflow("image_caption", { image: "ComfyUI_00001.png" })`. See [GENERATE-AND-VERIFY.md](GENERATE-AND-VERIFY.md).
+
 ***
 
 ## Save / load

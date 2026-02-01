@@ -106,4 +106,24 @@ describe('workflow-builder', () => {
     expect(workflow['7'].inputs.samples).toEqual(['6', 0]);
     expect(workflow['8'].inputs.images).toEqual(['7', 0]);
   });
+
+  it('listTemplates includes image_caption', () => {
+    const list = listTemplates();
+    expect(list).toContain('image_caption');
+  });
+
+  it('buildFromTemplate("image_caption") returns LoadImage + BLIPCaption with default image', () => {
+    const workflow = buildFromTemplate('image_caption');
+    expect(workflow).toBeDefined();
+    expect(Object.keys(workflow).length).toBe(2);
+    expect(workflow['1'].class_type).toBe('LoadImage');
+    expect(workflow['1'].inputs).toMatchObject({ image: 'input.png' });
+    expect(workflow['2'].class_type).toBe('BLIPCaption');
+    expect(workflow['2'].inputs).toMatchObject({ image: ['1', 0] });
+  });
+
+  it('buildFromTemplate("image_caption", { image }) uses given filename', () => {
+    const workflow = buildFromTemplate('image_caption', { image: 'ComfyUI_00001.png' });
+    expect(workflow['1'].inputs).toMatchObject({ image: 'ComfyUI_00001.png' });
+  });
 });

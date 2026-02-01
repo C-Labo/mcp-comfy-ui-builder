@@ -52,7 +52,6 @@ Single entry point — **task-oriented navigation**:
 - **[doc/QUICK-REFERENCE.md](doc/QUICK-REFERENCE.md)** — commands, examples, troubleshooting
 - **[doc/GETTING-STARTED.md](doc/GETTING-STARTED.md)** — quick start
 - **[doc/MCP-SETUP.md](doc/MCP-SETUP.md)** — connect MCP in Cursor/Claude
-- **Architecture:** [doc/node-discovery-system.md](doc/node-discovery-system.md), [doc/IMPLEMENTATION-CHECKLIST.md](doc/IMPLEMENTATION-CHECKLIST.md)
 - **Knowledge base:** [knowledge/README.md](knowledge/README.md), [doc/knowledge-base-usage-guide.md](doc/knowledge-base-usage-guide.md)
 - **Workflow Builder:** [doc/workflow-builder.md](doc/workflow-builder.md) — templates, params, save/load, ComfyUI format
 - **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md)
