@@ -79,4 +79,59 @@ describe('ComfyUI client', () => {
     const { isComfyUIConfigured } = await import('../src/comfyui-client.js');
     expect(isComfyUIConfigured()).toBe(true);
   });
+
+  it('interruptExecution sends POST /interrupt without body', async () => {
+    const { interruptExecution } = await import('../src/comfyui-client.js');
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    await interruptExecution();
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/interrupt'),
+      expect.objectContaining({ method: 'POST', body: '{}' })
+    );
+  });
+
+  it('interruptExecution sends prompt_id when given', async () => {
+    const { interruptExecution } = await import('../src/comfyui-client.js');
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    await interruptExecution('pid-1');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/interrupt'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ prompt_id: 'pid-1' }),
+      })
+    );
+  });
+
+  it('clearQueue sends POST /queue with clear true', async () => {
+    const { clearQueue } = await import('../src/comfyui-client.js');
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    await clearQueue();
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/queue'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ clear: true }),
+      })
+    );
+  });
+
+  it('deleteQueueItems sends POST /queue with delete array', async () => {
+    const { deleteQueueItems } = await import('../src/comfyui-client.js');
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    await deleteQueueItems(['p1', 'p2']);
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/queue'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ delete: ['p1', 'p2'] }),
+      })
+    );
+  });
+
+  it('deleteQueueItems does not call fetch when array empty', async () => {
+    const { deleteQueueItems } = await import('../src/comfyui-client.js');
+    await deleteQueueItems([]);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
 });

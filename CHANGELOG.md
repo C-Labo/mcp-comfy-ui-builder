@@ -4,6 +4,15 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [0.1.2] – 2026-02-02
+
+### Changed
+
+- Documentation: README, INDEX, MCP-SETUP, AI-ASSISTANT-GUIDE, comfyui-api-quick-reference.
+- ComfyUI client, MCP server; related tests updated.
+
+---
+
 ## [0.1.1] – 2026-02-02
 
 ### Added

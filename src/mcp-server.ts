@@ -1,7 +1,7 @@
 /**
  * MCP server: list_node_types, get_node_info, check_compatibility, suggest_nodes;
  * list_templates, build_workflow, save_workflow, list_saved_workflows, load_workflow;
- * execute_workflow, get_execution_status, list_queue (require COMFYUI_HOST).
+ * execute_workflow, get_execution_status, list_queue, interrupt_execution, clear_queue, delete_queue_items (require COMFYUI_HOST for execution/queue tools).
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -361,6 +361,101 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `list_queue failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'interrupt_execution',
+  {
+    description:
+      'Stop the currently running workflow on ComfyUI. Optionally pass prompt_id to interrupt only that prompt. Requires COMFYUI_HOST.',
+    inputSchema: {
+      prompt_id: z.string().optional().describe('Optional: interrupt only this prompt if it is running; omit to interrupt current run'),
+    },
+  },
+  async (args) => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'ComfyUI is not configured. Set COMFYUI_HOST to use interrupt_execution.',
+          },
+        ],
+      };
+    }
+    try {
+      await comfyui.interruptExecution(args.prompt_id);
+      const msg = args.prompt_id
+        ? `Interrupt sent for prompt_id: ${args.prompt_id}.`
+        : 'Interrupt sent. Current execution will stop.';
+      return { content: [{ type: 'text', text: msg }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `interrupt_execution failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'clear_queue',
+  {
+    description: 'Clear ComfyUI queue: remove all pending and stop/clear running. Requires COMFYUI_HOST.',
+    inputSchema: {},
+  },
+  async () => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'ComfyUI is not configured. Set COMFYUI_HOST to use clear_queue.',
+          },
+        ],
+      };
+    }
+    try {
+      await comfyui.clearQueue();
+      return { content: [{ type: 'text', text: 'Queue cleared.' }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `clear_queue failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'delete_queue_items',
+  {
+    description:
+      'Remove specific items from ComfyUI queue by prompt_id. Use list_queue to get prompt_ids. Requires COMFYUI_HOST.',
+    inputSchema: {
+      prompt_ids: z
+        .array(z.string())
+        .describe('List of prompt_id to remove from queue (from list_queue or execute_workflow)'),
+    },
+  },
+  async (args) => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'ComfyUI is not configured. Set COMFYUI_HOST to use delete_queue_items.',
+          },
+        ],
+      };
+    }
+    if (!args.prompt_ids?.length) {
+      return { content: [{ type: 'text', text: 'Provide at least one prompt_id.' }] };
+    }
+    try {
+      await comfyui.deleteQueueItems(args.prompt_ids);
+      return { content: [{ type: 'text', text: `Removed from queue: ${args.prompt_ids.join(', ')}` }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `delete_queue_items failed: ${msg}` }] };
     }
   }
 );

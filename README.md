@@ -81,6 +81,9 @@ Server provides tools for AI:
 - **execute_workflow(workflow)** — submit workflow to ComfyUI; returns `prompt_id` (requires `COMFYUI_HOST`)
 - **get_execution_status(prompt_id)** — get status and image outputs (requires `COMFYUI_HOST`)
 - **list_queue** — list running and pending prompts (requires `COMFYUI_HOST`)
+- **interrupt_execution(prompt_id?)** — stop current run or specific prompt (requires `COMFYUI_HOST`)
+- **clear_queue** — clear all pending and running (requires `COMFYUI_HOST`)
+- **delete_queue_items(prompt_ids)** — remove items from queue by prompt_id (requires `COMFYUI_HOST`)
 
 For execute/status/queue, set `COMFYUI_HOST` (default `http://127.0.0.1:8188`) or leave unset; ensure ComfyUI is running. See [.env.example](.env.example).
 

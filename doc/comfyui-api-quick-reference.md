@@ -10,6 +10,8 @@
 | `/ws` | **WebSocket** | 📡 Live monitoring | `clientId=unique` | Real-time updates | `wscat -c ws://127.0.0.1:8188/ws?clientId=test` | **Live progress** + images |
 | `/system_stats` | **GET** | 🖥️ System metrics | None | GPU/VRAM/RAM | `curl http://127.0.0.1:8188/system_stats` | Resource monitoring |
 | `/queue` | **GET** | ⏳ Queue | None | Queue length | `curl http://127.0.0.1:8188/queue` | Task queue status |
+| `/queue` | **POST** | 🧹 Queue ops | `{"clear": true}` or `{"delete": [prompt_id, ...]}` | 200 | Clear queue or delete items | Clear/delete queue |
+| `/interrupt` | **POST** | ⏹️ Interrupt | `{}` or `{"prompt_id": "id"}` | 200 | Stop current run (or specific prompt) | Interrupt execution |
 | `/view` | **GET** | 🖼️ Image | `filename`, `type=output` | Image file | `curl "http://127.0.0.1:8188/view?filename=img.png&type=output"` | Get generated image |
 
 ***

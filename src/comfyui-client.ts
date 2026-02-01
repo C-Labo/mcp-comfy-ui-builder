@@ -108,6 +108,51 @@ export async function getQueue(): Promise<QueueStatus> {
 }
 
 /**
+ * Interrupt currently running workflow. POST /interrupt.
+ * Optionally pass prompt_id to interrupt only that prompt (if it is running).
+ */
+export async function interruptExecution(promptId?: string): Promise<void> {
+  const body = promptId ? JSON.stringify({ prompt_id: promptId }) : '{}';
+  const res = await fetchWithRetry('/interrupt', {
+    method: 'POST',
+    body,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI /interrupt failed (${res.status}): ${text || res.statusText}`);
+  }
+}
+
+/**
+ * Clear queue: wipe all pending and running. POST /queue with { clear: true }.
+ */
+export async function clearQueue(): Promise<void> {
+  const res = await fetchWithRetry('/queue', {
+    method: 'POST',
+    body: JSON.stringify({ clear: true }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI POST /queue failed (${res.status}): ${text || res.statusText}`);
+  }
+}
+
+/**
+ * Delete specific queue items by prompt_id. POST /queue with { delete: [prompt_id, ...] }.
+ */
+export async function deleteQueueItems(promptIds: string[]): Promise<void> {
+  if (promptIds.length === 0) return;
+  const res = await fetchWithRetry('/queue', {
+    method: 'POST',
+    body: JSON.stringify({ delete: promptIds }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI POST /queue delete failed (${res.status}): ${text || res.statusText}`);
+  }
+}
+
+/**
  * Check if ComfyUI is configured. Always true by default — uses COMFYUI_HOST if set,
  * otherwise http://127.0.0.1:8188. No env needed for local ComfyUI.
  */

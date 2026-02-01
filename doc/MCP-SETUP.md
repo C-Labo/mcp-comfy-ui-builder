@@ -20,8 +20,11 @@
 | **execute_workflow(workflow)** | Submit workflow to ComfyUI; returns prompt_id (requires COMFYUI_HOST) |
 | **get_execution_status(prompt_id)** | Get status and image outputs (requires COMFYUI_HOST) |
 | **list_queue** | List running and pending prompts (requires COMFYUI_HOST) |
+| **interrupt_execution(prompt_id?)** | Stop current run or specific prompt (requires COMFYUI_HOST) |
+| **clear_queue** | Clear all pending and running (requires COMFYUI_HOST) |
+| **delete_queue_items(prompt_ids)** | Remove items from queue by prompt_id (requires COMFYUI_HOST) |
 
-Data is loaded from `knowledge/base-nodes.json` and `knowledge/node-compatibility.json` at server startup. For **execute_workflow**, **get_execution_status**, and **list_queue**, set `COMFYUI_HOST` (default `http://127.0.0.1:8188` if not set) and ensure ComfyUI is running. For list_node_types, get_node_info, check_compatibility, suggest_nodes, list_templates, build_workflow, save_workflow, list_saved_workflows, and load_workflow, no ComfyUI connection is needed.
+Data is loaded from `knowledge/base-nodes.json` and `knowledge/node-compatibility.json` at server startup. For **execute_workflow**, **get_execution_status**, **list_queue**, **interrupt_execution**, **clear_queue**, and **delete_queue_items**, set `COMFYUI_HOST` (default `http://127.0.0.1:8188` if not set) and ensure ComfyUI is running. For list_node_types, get_node_info, check_compatibility, suggest_nodes, list_templates, build_workflow, save_workflow, list_saved_workflows, and load_workflow, no ComfyUI connection is needed.
 
 ***
 
@@ -60,7 +63,7 @@ Alternative: `node dist/mcp-server.js`. Server uses **stdio** (stdin/stdout).
 
 3. Restart Cursor.
 
-After connecting, AI can call the tools above. For workflow execution (execute_workflow, get_execution_status, list_queue), set `COMFYUI_HOST` in the environment or in a `.env` file in the project root (see [.env.example](../.env.example)).
+After connecting, AI can call the tools above. For workflow execution and queue control (execute_workflow, get_execution_status, list_queue, interrupt_execution, clear_queue, delete_queue_items), set `COMFYUI_HOST` in the environment or in a `.env` file in the project root (see [.env.example](../.env.example)).
 
 ***
 

@@ -12,7 +12,7 @@
 | Complete start, seed + MCP | [GETTING-STARTED.md](GETTING-STARTED.md) |
 | Connect MCP (Cursor / Claude Desktop) | [MCP-SETUP.md](MCP-SETUP.md) |
 | Workflow Builder — templates, save/load, execute | [workflow-builder.md](workflow-builder.md) |
-| Гайд для ШІ (AI) — як працювати з пакетом після npm i -g | [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md) |
+| AI assistant guide — how to use the package (e.g. after npm i -g) | [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md) |
 | Технічний аналіз проекту та рекомендації | [PROJECT-INSIGHTS.md](PROJECT-INSIGHTS.md) |
 | Understand system, architecture | [SUMMARY.md](SUMMARY.md), [SYSTEM-DIAGRAM.md](SYSTEM-DIAGRAM.md) |
 | Develop / integrate code | [node-discovery-system.md](node-discovery-system.md), [IMPLEMENTATION-CHECKLIST.md](IMPLEMENTATION-CHECKLIST.md) |
