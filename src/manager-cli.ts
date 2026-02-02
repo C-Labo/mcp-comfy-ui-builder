@@ -42,6 +42,31 @@ export function isManagerCliConfigured(): boolean {
 }
 
 /**
+ * Get Python executable, preferring ComfyUI venv if available.
+ * Falls back to system python3/python if venv not found.
+ */
+export function getPythonExecutable(comfyPath?: string): string {
+  const base = comfyPath ?? getComfyPath();
+
+  if (base) {
+    // Try venv Python (Linux/Mac)
+    const venvPython = join(base, 'venv', 'bin', 'python3');
+    if (existsSync(venvPython)) {
+      return venvPython;
+    }
+
+    // Try venv Python (Windows)
+    const venvPythonWin = join(base, 'venv', 'Scripts', 'python.exe');
+    if (existsSync(venvPythonWin)) {
+      return venvPythonWin;
+    }
+  }
+
+  // Fallback to system Python
+  return process.platform === 'win32' ? 'python' : 'python3';
+}
+
+/**
  * Run cm-cli.py with given args (e.g. ['install', 'ComfyUI-Blip']).
  * cwd = COMFYUI_PATH. Uses system 'python3' or 'python'.
  */
@@ -64,8 +89,8 @@ export function runCmCli(args: string[]): { ok: boolean; stdout: string; stderr:
       code: null,
     };
   }
-  const python = process.platform === 'win32' ? 'python' : 'python3';
-  const richCheck = checkRichAvailable(python, base);
+  const python = getPythonExecutable(base);
+  const richCheck = checkRichAvailable(base);
   if (!richCheck.available) {
     return {
       ok: false,
@@ -94,16 +119,14 @@ export function runCmCli(args: string[]): { ok: boolean; stdout: string; stderr:
 
 /**
  * Check if the Python used for cm-cli has the 'rich' module (required by ComfyUI-Manager cm-cli).
- * Uses the same python executable and cwd as runCmCli for consistency.
+ * Uses ComfyUI venv Python if available, otherwise falls back to system Python.
  */
-export function checkRichAvailable(
-  python: string = process.platform === 'win32' ? 'python' : 'python3',
-  cwd?: string
-): { available: boolean; message?: string } {
+export function checkRichAvailable(comfyPath?: string): { available: boolean; message?: string } {
+  const python = getPythonExecutable(comfyPath);
   const child = spawnSync(python, ['-c', 'import rich'], {
     encoding: 'utf8',
     timeout: 5000,
-    cwd: cwd ?? undefined,
+    cwd: comfyPath ?? undefined,
   });
   if (child.status === 0) {
     return { available: true };
@@ -112,7 +135,7 @@ export function checkRichAvailable(
   const msg = stderr.trim() || "ModuleNotFoundError: No module named 'rich'";
   return {
     available: false,
-    message: `ComfyUI-Manager requires the Python package 'rich'. Run: pip install rich (in your ComfyUI Python environment). Original: ${msg}`,
+    message: `ComfyUI-Manager requires the Python package 'rich'. Install it in your ComfyUI venv: ${comfyPath ? join(comfyPath, 'venv/bin/pip') : 'pip'} install rich. Original: ${msg}`,
   };
 }
 

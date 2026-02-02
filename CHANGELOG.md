@@ -4,6 +4,14 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [1.1.3] – 2026-02-02
+
+### Fixed
+
+- **install_custom_node Python detection:** `runCmCli()` now uses ComfyUI venv Python (`COMFYUI_PATH/venv/bin/python3` or `venv/Scripts/python.exe`) instead of system Python. This fixes the "No module named 'rich'" error when `rich` is installed in ComfyUI venv but not globally. Falls back to system `python3`/`python` if venv not found. [src/manager-cli.ts](src/manager-cli.ts) — new `getPythonExecutable()` function.
+
+---
+
 ## [1.1.0] – 2026-02-02
 
 ### Added

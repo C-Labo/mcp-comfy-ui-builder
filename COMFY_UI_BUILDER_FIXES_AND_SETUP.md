@@ -1,7 +1,10 @@
-# ComfyUI-Builder MCP — що потрібно поправити і налаштування symlink
+# ComfyUI-Builder MCP — виправлення та налаштування
 
 **Дата:** 2 лютого 2025
-**Статус:** ✅ ВИПРАВЛЕНО - COMFYUI_KNOWLEDGE_DIR тепер працює в CLI
+**Оновлено:** 2 лютого 2025 (v1.1.3)
+**Статус:**
+- ✅ **v1.1.3**: install_custom_node тепер використовує venv Python
+- ✅ **v1.1.0**: COMFYUI_KNOWLEDGE_DIR тепер працює в CLI
 
 ---
 
@@ -9,26 +12,39 @@
 
 ### 1.1. install_custom_node — потрібен Python-пакет `rich`
 
-**Проблема:** ComfyUI-Manager `cm-cli` потребує `rich` для виводу. При виклику `install_custom_node` виникає:
+**Статус:** ✅ **ВИПРАВЛЕНО у v1.1.3** (2025-02-02)
+
+**Проблема (до v1.1.3):** ComfyUI-Manager `cm-cli` потребує `rich` для виводу. MCP використовував системний Python (`/usr/bin/python3`) замість Python з ComfyUI venv, тому `rich` не знаходився навіть після встановлення у venv:
 
 ```
 ModuleNotFoundError: No module named 'rich'
 ```
 
-**Статус:** ✅ Код вже перевіряє наявність `rich` (src/manager-cli.ts:68-78) і повертає зрозуміле повідомлення.
+**Виправлення (v1.1.3+):**
+- ✅ Додано функцію `getPythonExecutable()` в `src/manager-cli.ts`
+- ✅ MCP тепер **автоматично** використовує Python з `COMFYUI_PATH/venv/bin/python3` (Linux/Mac) або `venv/Scripts/python.exe` (Windows)
+- ✅ Fallback на системний Python, якщо venv не знайдено
+- ✅ `checkRichAvailable()` також використовує venv Python
 
-**Рішення:** встановити `rich` у venv ComfyUI:
+**Рішення для користувачів:**
+
+Просто встановіть `rich` у ComfyUI venv (MCP тепер автоматично його знайде):
 
 ```bash
+# Шлях до venv pip
 /Users/d.bilukcha/Projects/comfyui-lana/ComfyUI/venv/bin/pip install rich
-```
 
-**Альтернатива (якщо використовуєш інший шлях до venv):**
-
-```bash
-# Активуй venv і встанови
+# Або активуй venv
 source /шлях/до/ComfyUI/venv/bin/activate
 pip install rich
+```
+
+**Перевірка після оновлення:**
+
+```bash
+# Тест (з репозиторію MCP)
+COMFYUI_PATH=/path/to/ComfyUI node test-python-venv.js
+# Очікуваний вивід: "Rich доступний: true"
 ```
 
 ---
@@ -180,17 +196,18 @@ rm /Users/d.bilukcha/knowledge
 
 ## 3. Швидкий чеклист налаштування
 
-### ✅ Після виправлення (2.02.2025):
+### ✅ Після виправлення (v1.1.3, 2.02.2025):
 
-- [x] **ВИПРАВЛЕНО**: `COMFYUI_KNOWLEDGE_DIR` тепер підхоплюється CLI і MCP сервером
-- [ ] Оновити код: `git pull` (якщо використовуєш git repo)
-- [ ] Перебудувати: `npm run build`
+- [x] **v1.1.3 ВИПРАВЛЕНО**: `install_custom_node` автоматично використовує venv Python
+- [x] **v1.1.0 ВИПРАВЛЕНО**: `COMFYUI_KNOWLEDGE_DIR` підхоплюється CLI і MCP сервером
+- [ ] Оновити код: `git pull` або `npm install -g mcp-comfy-ui-builder@1.1.3`
+- [ ] Перебудувати (якщо з git): `cd /path/to/mcp-comfy-ui-builder && npm run build && npm install -g .`
 - [ ] Додати env var в `.cursor/mcp.json`:
   - `COMFYUI_HOST` (обов'язково для виконання workflow)
   - `COMFYUI_KNOWLEDGE_DIR` (тепер працює! можна замість symlink)
   - `COMFYUI_PATH` (обов'язково для install_custom_node і install_model)
 - [ ] Перезапустити Cursor/Claude Desktop
-- [ ] `pip install rich` у ComfyUI venv (для `install_custom_node`)
+- [ ] `pip install rich` у ComfyUI venv — тепер MCP **автоматично знайде** його у venv!
 - [ ] Для `execute_chain` використовувати ім'я workflow, не inline JSON
 
 ### Альтернатива (якщо не хочеш використовувати env var):
@@ -247,5 +264,6 @@ npm run seed
 
 ## Changelog
 
-- **2025-02-02**: ✅ ВИПРАВЛЕНО - `COMFYUI_KNOWLEDGE_DIR` тепер працює в CLI (src/cli.ts)
+- **2025-02-02 (v1.1.3)**: ✅ ВИПРАВЛЕНО - `install_custom_node` тепер автоматично використовує venv Python (src/manager-cli.ts - `getPythonExecutable()`)
+- **2025-02-02 (v1.1.0)**: ✅ ВИПРАВЛЕНО - `COMFYUI_KNOWLEDGE_DIR` тепер працює в CLI (src/cli.ts)
 - **2025-02-02**: Створено документ з описом проблем та workaround (symlink)
