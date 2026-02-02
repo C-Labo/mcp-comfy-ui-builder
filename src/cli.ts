@@ -17,7 +17,11 @@ function isNetworkError(e: unknown): boolean {
   return /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|fetch failed|network/i.test(msg);
 }
 
-const knowledgePath = () => join(process.cwd(), 'knowledge');
+const knowledgePath = () => {
+  const envDir = process.env.COMFYUI_KNOWLEDGE_DIR?.trim();
+  if (envDir) return envDir;
+  return join(process.cwd(), 'knowledge');
+};
 const baseNodesPath = () => join(knowledgePath(), 'base-nodes.json');
 const seedBaseNodesPath = () => join(knowledgePath(), 'seed-base-nodes.json');
 const seedNodeCompatibilityPath = () => join(knowledgePath(), 'seed-node-compatibility.json');
