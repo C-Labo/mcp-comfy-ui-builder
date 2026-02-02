@@ -1,0 +1,63 @@
+/**
+ * Unit tests for batch-executor (mocked comfyui).
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockSubmitPromptAndWait = vi.fn();
+vi.mock('../src/comfyui-client.js', () => ({
+  submitPromptAndWait: (...args: unknown[]) => mockSubmitPromptAndWait(...args),
+}));
+
+describe('executeBatch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('runs one workflow and returns result', async () => {
+    mockSubmitPromptAndWait.mockResolvedValueOnce({
+      prompt_id: 'p1',
+      status: 'completed',
+      outputs: { '7': { images: [] } },
+    });
+    const { executeBatch } = await import('../src/workflow/batch-executor.js');
+    const results = await executeBatch({
+      workflows: [{ '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } }],
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0].prompt_id).toBe('p1');
+    expect(results[0].status).toBe('completed');
+    expect(mockSubmitPromptAndWait).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs two workflows with concurrency 1', async () => {
+    mockSubmitPromptAndWait
+      .mockResolvedValueOnce({ prompt_id: 'p1', status: 'completed', outputs: {} })
+      .mockResolvedValueOnce({ prompt_id: 'p2', status: 'completed', outputs: {} });
+    const { executeBatch } = await import('../src/workflow/batch-executor.js');
+    const results = await executeBatch({
+      workflows: [
+        { '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } },
+        { '2': { class_type: 'KSampler', inputs: {} } },
+      ],
+      concurrency: 1,
+    });
+    expect(results).toHaveLength(2);
+    expect(results[0].index).toBe(0);
+    expect(results[1].index).toBe(1);
+    expect(results.map((r) => r.status)).toEqual(['completed', 'completed']);
+  });
+
+  it('reports failed when submitPromptAndWait returns failed', async () => {
+    mockSubmitPromptAndWait.mockResolvedValueOnce({
+      prompt_id: 'p1',
+      status: 'failed',
+      error: 'Node error',
+    });
+    const { executeBatch } = await import('../src/workflow/batch-executor.js');
+    const results = await executeBatch({
+      workflows: [{ '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } }],
+    });
+    expect(results[0].status).toBe('failed');
+    expect(results[0].error).toBe('Node error');
+  });
+});

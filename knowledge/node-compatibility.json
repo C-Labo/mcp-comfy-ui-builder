@@ -95,7 +95,8 @@
         "ImageCompositeMasked",
         "CropImage",
         "PadImage",
-        "PreviewImage"
+        "PreviewImage",
+        "ImageUpscaleWithModel"
       ],
       "consumers": [
         "SaveImage",
@@ -173,6 +174,14 @@
         "CLIPLoader",
         "VAELoader",
         "ControlNetLoader"
+      ]
+    },
+    "UPSCALE_MODEL": {
+      "producers": [
+        "UpscaleModelLoader"
+      ],
+      "consumers": [
+        "ImageUpscaleWithModel"
       ]
     }
   },

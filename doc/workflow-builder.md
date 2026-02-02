@@ -181,6 +181,22 @@ Example: `build_workflow("batch", { base_params: { width: 512, prompt: "x" }, va
 
 ***
 
+## Dynamic workflow (create_workflow, add_node, connect_nodes, …)
+
+Build a workflow step by step instead of from a template:
+
+1. **create_workflow** — returns `workflow_id` (e.g. `wf_xxx`).
+2. **add_node**(workflow_id, class_type, inputs?) — returns node id (`"1"`, `"2"`, …). Use for literal inputs (ckpt_name, text, seed, etc.).
+3. **connect_nodes**(workflow_id, from_node, output_idx, to_node, input_name) — connect output of one node to input of another (e.g. `"1"`, 1, `"2"`, `"clip"`).
+4. **set_node_input**(workflow_id, node_id, input_name, value) — set or overwrite a literal input.
+5. **remove_node**(workflow_id, node_id) — remove a node (validation will report dangling refs).
+6. **get_workflow_json**(workflow_id) or **finalize_workflow**(workflow_id) — get workflow JSON for **execute_workflow** or **save_workflow**.
+7. **validate_workflow**(workflow_id) — check that all node references exist.
+
+Workflows expire after 30 minutes if not used. Example: create_workflow → add_node(CheckpointLoaderSimple) → add_node(CLIPTextEncode, {text: "a cat"}) → connect_nodes(…, "1", 1, "2", "clip") → … → get_workflow_json → execute_workflow.
+
+***
+
 ## Save / load
 
 - **save_workflow(name, workflow)** — saves to `workflows/<name>.json` (relative to cwd). Name is sanitized (alphanumeric, dash, underscore).

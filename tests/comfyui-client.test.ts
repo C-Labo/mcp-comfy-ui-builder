@@ -83,6 +83,28 @@ describe('ComfyUI client', () => {
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/object_info'), expect.any(Object));
   });
 
+  it('submitPromptAndWait returns completed result when history has entry', async () => {
+    const { submitPromptAndWait } = await import('../src/comfyui-client.js');
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ prompt_id: 'p1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          prompt_id: 'p1',
+          outputs: { '7': { images: [{ filename: 'out.png', subfolder: 'output', type: 'output' }] } },
+          status: {},
+        }),
+      });
+    const workflow = { '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } };
+    const result = await submitPromptAndWait(workflow, 5000);
+    expect(result.prompt_id).toBe('p1');
+    expect(result.status).toBe('completed');
+    expect(result.outputs).toBeDefined();
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/prompt'), expect.any(Object));
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/history/p1'), expect.any(Object));
+  });
+
   it('submitPrompt throws on non-ok response', async () => {
     const { submitPrompt } = await import('../src/comfyui-client.js');
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'Server error' });

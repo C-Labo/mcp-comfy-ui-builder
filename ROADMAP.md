@@ -19,7 +19,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Далі:** Розширення шаблонів, Dynamic Builder, Execution/Discovery покращення — згідно **[IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md)**.
+**Далі:** IMPROVEMENT-PLAN Phase 1–6 виконано; опційно — Web UI, Docker, подальші розширення (див. [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md)).
 
 ---
 
@@ -45,8 +45,8 @@
 | **2** | Dynamic Workflow Builder | dynamic-builder.ts, workflow-store.ts; MCP: create_workflow, add_node, connect_nodes, … |
 | **3** | Node Discovery Enhancement | getObjectInfo, hybrid-discovery.ts; MCP: discover_nodes_live, search_nodes, sync_nodes_to_knowledge |
 | **4** | Execution Improvements | comfyui-ws-client.ts, batch-executor, output-manager; execute_workflow_sync, execute_batch, list_outputs |
-| **5** | Model Management | model-manager.ts; list_models, get_workflow_models, check_workflow_models |
-| **6** | Workflow Composition | workflow-template, macro, chainer; create_template, insert_macro, execute_chain |
+| **5** | Model Management | model-manager.ts; list_models, get_model_info, check_model_exists, get_workflow_models, check_workflow_models ✅ |
+| **6** | Workflow Composition | workflow-template, macro, chainer; create_template, apply_template, list_macros, insert_macro, execute_chain ✅ |
 
 **Порядок:** Фаза 1 → Фаза 2 (і паралельно Фаза 3) → Фаза 4 (і паралельно Фаза 5) → Фаза 6.
 
@@ -64,7 +64,9 @@ Save/load + docs               [████████████████
 IMPROVEMENT-PLAN Phase 1       [████████████████████] 100% ✅
 IMPROVEMENT-PLAN Phase 2       [████████████████████] 100% ✅
 IMPROVEMENT-PLAN Phase 3       [████████████████████] 100% ✅
-IMPROVEMENT-PLAN Phases 4–6   [░░░░░░░░░░░░░░░░░░░░]   0% (next)
+IMPROVEMENT-PLAN Phase 4       [████████████████████] 100% ✅
+IMPROVEMENT-PLAN Phase 5       [████████████████████] 100% ✅
+IMPROVEMENT-PLAN Phase 6       [████████████████████] 100% ✅
 ```
 
 ### Feature Roadmap
@@ -80,7 +82,9 @@ IMPROVEMENT-PLAN Phases 4–6   [░░░░░░░░░░░░░░░�
 | **IMPROVEMENT-PLAN: Phase 1 templates** (inpainting, upscale, lora, controlnet, batch) | ✅ Done | P1 | — |
 | **IMPROVEMENT-PLAN: Phase 2** Dynamic Builder | ✅ Done | P2 | — |
 | **IMPROVEMENT-PLAN: Phase 3** Node Discovery (getObjectInfo, hybrid-discovery, discover/search/sync) | ✅ Done | P2 | — |
-| **IMPROVEMENT-PLAN: Phases 4–6** Execution, Models, Composition | 🔄 Next | P2 | Phases 4–6 |
+| **IMPROVEMENT-PLAN: Phase 4** Execution (submitAndWait, batch-executor, output-manager, list/download) | ✅ Done | P2 | — |
+| **IMPROVEMENT-PLAN: Phase 5** Model Management (list_models, get_workflow_models, check_workflow_models) | ✅ Done | P2 | — |
+| **IMPROVEMENT-PLAN: Phase 6** Workflow Composition (template, macro, chainer, create_template, insert_macro, execute_chain) | ✅ Done | P2 | — |
 
 **Legend:** ✅ Done | 🔄 Next | 📋 Backlog
 

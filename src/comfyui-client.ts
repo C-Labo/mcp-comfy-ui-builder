@@ -10,6 +10,7 @@ import type {
   HistoryNodeOutput,
   QueueStatus,
   ObjectInfo,
+  ExecutionResult,
 } from './types/comfyui-api-types.js';
 
 const DEFAULT_HOST = 'http://127.0.0.1:8188';
@@ -270,4 +271,36 @@ export async function uploadImage(imageBytes: ArrayBuffer, suggestedFilename: st
 export async function prepareImageForWorkflow(promptId: string): Promise<UploadImageResponse> {
   const { bytes, filename } = await fetchOutputImageBytes(promptId);
   return uploadImage(bytes, filename);
+}
+
+const POLL_INTERVAL_MS = 1500;
+const DEFAULT_SYNC_TIMEOUT_MS = 300_000; // 5 minutes
+
+/**
+ * Submit workflow and wait until execution completes (polling GET /history).
+ * Returns prompt_id, status (completed/failed/timeout), and outputs from history.
+ */
+export async function submitPromptAndWait(
+  workflow: ComfyUIWorkflow,
+  timeoutMs: number = DEFAULT_SYNC_TIMEOUT_MS
+): Promise<ExecutionResult> {
+  const { prompt_id } = await submitPrompt(workflow);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const entries = await getHistory(prompt_id);
+    if (entries.length > 0) {
+      const entry = entries[0];
+      const statusStr = (entry.status as { status_str?: string } | undefined)?.status_str;
+      const messages = (entry.status as { messages?: unknown[] } | undefined)?.messages;
+      const hasError = Boolean(messages?.length);
+      return {
+        prompt_id,
+        status: hasError ? 'failed' : 'completed',
+        outputs: entry.outputs,
+        error: hasError ? String(messages?.[0]) : undefined,
+      };
+    }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+  return { prompt_id, status: 'timeout', error: `Timed out after ${timeoutMs}ms` };
 }

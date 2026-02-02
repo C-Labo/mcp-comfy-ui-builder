@@ -3,7 +3,7 @@
 > Workflow Builder plan (like @makafeli/n8n-workflow-builder for ComfyUI)
 
 **Last Updated:** 2026-02-02  
-**Status:** Phase 6–8 done ✅; IMPROVEMENT-PLAN Phase 1 (шаблони) + Phase 2 (Dynamic Builder) + Phase 3 (Node Discovery) done ✅. Next: Phase 4 (Execution) або Phase 5 (Model Management). Детальний план — [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md).
+**Status:** Phase 6–8 done ✅; IMPROVEMENT-PLAN Phase 1–6 done ✅. Детальний план — [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md).
 
 ---
 
@@ -98,9 +98,9 @@
 
 - [x] **Phase 2:** dynamic-builder.ts, workflow-store.ts; MCP: create_workflow, add_node, connect_nodes, remove_node, set_node_input, get_workflow_json, validate_workflow, finalize_workflow. ✅
 - [x] **Phase 3:** getObjectInfo у comfyui-client; hybrid-discovery.ts; MCP: discover_nodes_live, search_nodes, get_node_inputs, get_node_outputs, list_node_categories, sync_nodes_to_knowledge. ✅
-- [ ] **Phase 4:** comfyui-ws-client.ts, batch-executor.ts, output-manager.ts; MCP: execute_workflow_sync, get_execution_progress, execute_batch, list_outputs, download_output, download_all_outputs.
-- [ ] **Phase 5:** model-manager.ts; MCP: list_models, get_model_info, check_model_exists, get_workflow_models, check_workflow_models.
-- [ ] **Phase 6:** workflow-template.ts, macro.ts, chainer.ts; MCP: create_template, apply_template, list_macros, insert_macro, execute_chain.
+- [x] **Phase 4:** submitPromptAndWait (polling), batch-executor.ts, output-manager.ts; MCP: execute_workflow_sync, get_execution_progress, execute_batch, list_outputs, download_output, download_all_outputs. ✅
+- [x] **Phase 5:** model-manager.ts; MCP: list_models, get_model_info, check_model_exists, get_workflow_models, check_workflow_models. ✅
+- [x] **Phase 6:** workflow-template.ts, macro.ts, chainer.ts; MCP: create_template, apply_template, validate_template_params, list_macros, insert_macro, execute_chain. ✅
 - [ ] Web UI, Docker, plugin system (пізніше)
 
 ---
@@ -128,4 +128,4 @@
 2. `npm run mcp` — use list_node_types, get_node_info, check_compatibility, suggest_nodes, list_templates, build_workflow, save_workflow, list_saved_workflows, load_workflow
 3. For execute/status/queue: set COMFYUI_HOST (e.g. in .env) and use execute_workflow, get_execution_status, list_queue
 
-**Next:** IMPROVEMENT-PLAN Phase 1 — шаблони inpainting, upscale, lora, controlnet, batch (see [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md)).
+**Next:** Web UI, Docker, plugin system (пізніше); або розширення шаблонів/макросів.

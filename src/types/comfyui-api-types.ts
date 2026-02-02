@@ -38,6 +38,14 @@ export interface HistoryEntry {
   [key: string]: unknown;
 }
 
+/** Result of synchronous workflow execution (submit + wait). */
+export interface ExecutionResult {
+  prompt_id: string;
+  status: 'completed' | 'failed' | 'timeout';
+  outputs?: Record<string, HistoryNodeOutput>;
+  error?: string;
+}
+
 /** GET /queue response. */
 export interface QueueStatus {
   queue_running: unknown[];
