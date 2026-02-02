@@ -23,3 +23,6 @@ npm-debug.log*
 # Test / coverage
 coverage/
 .nyc_output/
+
+# Publish script (local use)
+scripts/publish.sh
