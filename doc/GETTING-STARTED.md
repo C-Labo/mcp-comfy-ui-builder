@@ -28,6 +28,94 @@
 
 3. **Connect MCP** in Cursor or Claude Desktop — see [MCP-SETUP.md](MCP-SETUP.md).
 
+4. **(Optional) Configure ComfyUI connection** for real-time execution:
+
+   ```bash
+   export COMFYUI_HOST="http://localhost:8188"
+   ```
+
+***
+
+## Real-Time Execution (v0.5.0+)
+
+### WebSocket Support
+
+The MCP server now supports **real-time progress tracking** via WebSocket with automatic fallback to polling.
+
+**Benefits:**
+- Sub-second progress updates (<100ms vs 1.5s polling)
+- See exactly which node is executing
+- 90% reduced network traffic
+- Automatic fallback if WebSocket unavailable
+
+### Example: Execute Workflow with Progress
+
+In Claude Desktop:
+
+```
+User: "Execute this txt2img workflow and show me progress"
+
+Claude uses: execute_workflow_sync with stream_progress=true
+
+Response includes:
+{
+  "prompt_id": "abc-123",
+  "status": "completed",
+  "progress_method": "websocket",    ← Real-time updates!
+  "progress_log": [
+    "Queued (position: 0)",
+    "Node 1 started",
+    "Node 3 started",
+    "Node 3 progress: 25%",           ← Live progress
+    "Node 3 progress: 50%",
+    "Node 3 progress: 75%",
+    "Node 3 completed",
+    "Node 7 started",
+    "Node 7 completed",
+    "Execution finished"
+  ],
+  "outputs": { ... }
+}
+```
+
+### Setup for Real-Time Features
+
+1. **Start ComfyUI:**
+   ```bash
+   cd /path/to/ComfyUI
+   python main.py --listen
+   ```
+
+2. **Set environment variable:**
+   ```bash
+   export COMFYUI_HOST="http://localhost:8188"
+   ```
+
+3. **Rebuild and restart MCP:**
+   ```bash
+   npm run build
+   npm run mcp
+   ```
+
+4. **Test in Claude:**
+   ```
+   "Execute a simple workflow and show progress"
+   ```
+
+   Look for `"progress_method": "websocket"` in the response.
+
+### Available Tools
+
+| Tool | Real-Time Support | Description |
+|------|------------------|-------------|
+| `execute_workflow_sync` | ✅ Yes | Execute with progress streaming |
+| `execute_batch` | ✅ Yes | Optimized batch with shared WebSocket |
+| `execute_chain` | ✅ Yes | Sequential workflows with progress per step |
+| `get_execution_progress` | ✅ Yes | Check real-time progress for prompt_id |
+| `execute_workflow_stream` | ✅ Required | Stream all events (WebSocket only) |
+
+See [WEBSOCKET-GUIDE.md](WEBSOCKET-GUIDE.md) for detailed usage.
+
 ***
 
 ## Commands
@@ -53,7 +141,8 @@
 - **Task navigation**: [doc/README.md](README.md)
 - **Quick reference**: [QUICK-REFERENCE.md](QUICK-REFERENCE.md)
 - **MCP**: [MCP-SETUP.md](MCP-SETUP.md)
+- **Docker setup**: [DOCKER-SETUP.md](DOCKER-SETUP.md)
 
 ***
 
-*Getting Started v1.2.0* | *2026-02-01*
+*Getting Started v1.3.0 - WebSocket Support* | *2026-02-02*

@@ -71,3 +71,106 @@ export interface ObjectInfoNode {
 
 /** GET /object_info response: class name -> node definition. */
 export type ObjectInfo = Record<string, ObjectInfoNode>;
+
+/**
+ * WebSocket event types from ComfyUI /ws endpoint
+ */
+
+/** Base WebSocket message structure */
+export interface WSMessage {
+  type: string;
+  data: unknown;
+}
+
+/** Progress event: sent during node execution (0-1 progress) */
+export interface WSProgressEvent {
+  type: 'progress';
+  data: {
+    value: number; // current progress
+    max: number; // total steps
+    prompt_id?: string; // execution ID (may not always be present)
+    node?: string; // optional node ID
+  };
+}
+
+/** Executing event: node has started execution */
+export interface WSExecutingEvent {
+  type: 'executing';
+  data: {
+    node: string | null; // null means execution finished
+    prompt_id: string;
+    display_node?: string;
+  };
+}
+
+/** Executed event: node completed with outputs */
+export interface WSExecutedEvent {
+  type: 'executed';
+  data: {
+    node: string;
+    prompt_id: string;
+    output: Record<string, unknown>; // node outputs
+  };
+}
+
+/** Status event: execution state change */
+export interface WSStatusEvent {
+  type: 'status';
+  data: {
+    status: {
+      exec_info: {
+        queue_remaining: number;
+      };
+    };
+    sid?: string;
+  };
+}
+
+/** Execution error event */
+export interface WSExecutionErrorEvent {
+  type: 'execution_error';
+  data: {
+    prompt_id: string;
+    node_id: string;
+    node_type: string;
+    executed: string[];
+    exception_message: string;
+    exception_type: string;
+    traceback: string[];
+  };
+}
+
+/** Execution cached event: node output was cached */
+export interface WSExecutionCachedEvent {
+  type: 'execution_cached';
+  data: {
+    nodes: string[];
+    prompt_id: string;
+  };
+}
+
+/** Union type for all WebSocket events */
+export type WSEvent =
+  | WSProgressEvent
+  | WSExecutingEvent
+  | WSExecutedEvent
+  | WSStatusEvent
+  | WSExecutionErrorEvent
+  | WSExecutionCachedEvent;
+
+/** Progress information for a prompt execution */
+export interface ExecutionProgress {
+  prompt_id: string;
+  status: 'queued' | 'executing' | 'completed' | 'failed';
+  current_node?: string;
+  current_node_progress?: number; // 0-1
+  queue_position?: number;
+  completed_nodes: string[];
+  cached_nodes: string[];
+  outputs: Record<string, HistoryNodeOutput>;
+  error?: {
+    node_id: string;
+    message: string;
+    type: string;
+  };
+}

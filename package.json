@@ -42,10 +42,12 @@
     "@modelcontextprotocol/sdk": "^1.25.3",
     "commander": "^12.1.0",
     "node-fetch": "^3.3.2",
+    "ws": "^8.16.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^22.10.1",
+    "@types/ws": "^8.5.10",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.6"

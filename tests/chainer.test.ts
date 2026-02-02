@@ -18,6 +18,13 @@ vi.mock('../src/workflow/workflow-storage.js', () => ({
   loadWorkflow: (name: string) => mockLoadWorkflow(name),
 }));
 
+// Mock WebSocket client to force polling fallback
+vi.mock('../src/comfyui-ws-client.js', () => ({
+  getWSClient: () => ({
+    connect: () => Promise.reject(new Error('WebSocket not available in tests')),
+  }),
+}));
+
 describe('chainer', () => {
   beforeEach(() => {
     vi.clearAllMocks();

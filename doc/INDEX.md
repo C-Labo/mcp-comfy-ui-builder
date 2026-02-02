@@ -17,6 +17,7 @@
 | Install custom nodes and models (LoRA, checkpoints, VAE) | [INSTALL-NODES-AND-MODELS.md](INSTALL-NODES-AND-MODELS.md) |
 | ComfyUI API, knowledge base in code | [comfyui-api-quick-reference.md](comfyui-api-quick-reference.md), [comfyui-api-detailed-guide.md](comfyui-api-detailed-guide.md), [knowledge-base-usage-guide.md](knowledge-base-usage-guide.md) |
 | Plugins — extend templates/macros via JSON | [PLUGINS.md](PLUGINS.md) |
+| Docker — run MCP server and ComfyUI via containers | [DOCKER-SETUP.md](DOCKER-SETUP.md) |
 
 ---
 
@@ -35,6 +36,7 @@
 | [GENERATE-AND-VERIFY.md](GENERATE-AND-VERIFY.md) | Generate and verify workflow |
 | [INSTALL-NODES-AND-MODELS.md](INSTALL-NODES-AND-MODELS.md) | Install custom nodes and models via MCP |
 | [PLUGINS.md](PLUGINS.md) | Data-only plugins (templates/macros) and related MCP tools |
+| [DOCKER-SETUP.md](DOCKER-SETUP.md) | Docker images and docker-compose for MCP + ComfyUI |
 
 ### Reference
 

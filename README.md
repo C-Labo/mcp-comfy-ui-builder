@@ -10,7 +10,9 @@
 
 - Seed `knowledge/base-nodes.json` and `node-compatibility.json` from bundled seed (no external services)
 - Sync custom packs list from ComfyUI-Manager (GitHub)
-- MCP server with tools: `list_node_types`, `get_node_info`, `check_compatibility`, `suggest_nodes`; **Workflow Builder:** `list_templates`, `build_workflow`, `save_workflow`, `list_saved_workflows`, `load_workflow`, `execute_workflow`, `get_execution_status`, `list_queue` (require `COMFYUI_HOST` for execute/status/queue)
+- MCP server with 50+ tools: node discovery, dynamic workflow builder, template system, **WebSocket real-time execution** (v0.5.0+), batch/chain execution, model management, plugin system
+- **Real-time progress tracking:** Sub-second updates via WebSocket with automatic polling fallback
+- **90% reduced network traffic** for batch execution with shared WebSocket connection
 
 ## Quick start
 
@@ -52,6 +54,7 @@ Single entry point — **task-oriented navigation**:
 - **[doc/QUICK-REFERENCE.md](doc/QUICK-REFERENCE.md)** — commands, examples, troubleshooting
 - **[doc/GETTING-STARTED.md](doc/GETTING-STARTED.md)** — quick start
 - **[doc/MCP-SETUP.md](doc/MCP-SETUP.md)** — connect MCP in Cursor/Claude
+- **[doc/DOCKER-SETUP.md](doc/DOCKER-SETUP.md)** — Docker images and docker-compose examples for MCP + ComfyUI
 - **Knowledge base:** [knowledge/README.md](knowledge/README.md), [doc/knowledge-base-usage-guide.md](doc/knowledge-base-usage-guide.md)
 - **Workflow Builder:** [doc/workflow-builder.md](doc/workflow-builder.md) — templates, params, save/load, ComfyUI format
 - **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md)
@@ -63,28 +66,57 @@ Single entry point — **task-oriented navigation**:
 
 ## MCP Server (Cursor / Claude)
 
-Server provides tools for AI:
+Server provides 50+ tools across 9 categories:
 
-- **list_node_types** — list nodes from knowledge base (optional filter by category/priority)
-- **get_node_info(node_name)** — complete information about a node
-- **check_compatibility(from_node, to_node)** — check output-to-input compatibility
-- **suggest_nodes(task_description | input_type)** — suggest nodes by task or type
+### Core Features
 
-**Workflow Builder** (build, save, load, run ComfyUI workflows):
+**Node Discovery:**
+- **list_node_types**, **get_node_info**, **check_compatibility**, **suggest_nodes**
+- **discover_nodes_live**, **search_nodes**, **sync_nodes_to_knowledge**
 
-- **list_templates** — list available workflow template ids (e.g. txt2img)
-- **build_workflow(template, params?)** — build workflow JSON from template (no ComfyUI needed)
-- **save_workflow(name, workflow)** — save workflow to workflows/\<name\>.json
-- **list_saved_workflows** — list saved workflows (names and paths)
-- **load_workflow(name_or_path)** — load workflow JSON for execute or save
-- **execute_workflow(workflow)** — submit workflow to ComfyUI; returns `prompt_id` (requires `COMFYUI_HOST`)
-- **get_execution_status(prompt_id)** — get status and image outputs (requires `COMFYUI_HOST`)
-- **list_queue** — list running and pending prompts (requires `COMFYUI_HOST`)
-- **interrupt_execution(prompt_id?)** — stop current run or specific prompt (requires `COMFYUI_HOST`)
-- **clear_queue** — clear all pending and running (requires `COMFYUI_HOST`)
-- **delete_queue_items(prompt_ids)** — remove items from queue by prompt_id (requires `COMFYUI_HOST`)
+**Dynamic Workflow Builder:**
+- **create_workflow**, **add_node**, **connect_nodes**, **validate_workflow**
+- Build workflows programmatically without JSON manipulation
 
-For execute/status/queue, set `COMFYUI_HOST` (default `http://127.0.0.1:8188`) or leave unset; ensure ComfyUI is running. See [.env.example](.env.example).
+**Templates & Macros:**
+- **list_templates**, **build_workflow** — Pre-built templates (txt2img, img2img, inpainting, upscale, LoRA, ControlNet, batch)
+- **create_template**, **apply_template** — Parameterized templates
+- **list_macros**, **insert_macro** — Reusable sub-workflows
+
+**Real-Time Execution (v0.5.0+) 📡:**
+- **execute_workflow_sync** — Execute with **WebSocket progress streaming** (sub-second updates)
+- **execute_workflow_stream** — Full event history collection (WebSocket-only)
+- **get_execution_progress** — Real-time progress with node-level granularity
+- **execute_batch** — Concurrent execution with **90% reduced network traffic**
+- **execute_chain** — Sequential workflows with data passing
+
+**Model Management:**
+- **list_models**, **check_model_exists**, **get_workflow_models**
+- Supports checkpoint, lora, vae, controlnet, upscale, embedding, clip
+
+**Outputs & Queue:**
+- **list_outputs**, **download_output**, **download_all_outputs**
+- **list_queue**, **interrupt_execution**, **clear_queue**
+
+**Plugins:**
+- **list_plugins**, **reload_plugins** — Data-only plugin system
+
+**Install (requires COMFYUI_PATH):**
+- **install_custom_node**, **install_model** — Install nodes and models via ComfyUI-Manager
+
+### WebSocket Features (v0.5.0+)
+
+- **<100ms latency** for progress updates (vs 1.5s polling)
+- **Node-level tracking:** See exactly which node is executing with progress percentage
+- **Automatic fallback:** Gracefully falls back to polling if WebSocket unavailable
+- **Shared connection:** Single WebSocket for batch/chain execution (90% reduced traffic)
+
+Set `COMFYUI_HOST` environment variable for execution/model/output tools:
+```bash
+export COMFYUI_HOST="http://localhost:8188"
+```
+
+See [doc/MCP-SETUP.md](doc/MCP-SETUP.md) for full tool list and [doc/WEBSOCKET-GUIDE.md](doc/WEBSOCKET-GUIDE.md) for real-time features.
 
 ### Running MCP
 

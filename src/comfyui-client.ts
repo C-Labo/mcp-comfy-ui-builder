@@ -304,3 +304,126 @@ export async function submitPromptAndWait(
   }
   return { prompt_id, status: 'timeout', error: `Timed out after ${timeoutMs}ms` };
 }
+
+/**
+ * Submit workflow and wait with WebSocket progress tracking (hybrid approach).
+ * Tries WebSocket first for real-time updates, falls back to polling if unavailable.
+ * @param workflow - ComfyUI workflow to execute
+ * @param timeoutMs - Maximum wait time in milliseconds
+ * @param onProgress - Optional callback for progress updates (only with WebSocket)
+ * @returns Execution result with status and outputs
+ */
+export async function submitPromptAndWaitWithProgress(
+  workflow: ComfyUIWorkflow,
+  timeoutMs: number = DEFAULT_SYNC_TIMEOUT_MS,
+  onProgress?: (progress: import('./types/comfyui-api-types.js').ExecutionProgress) => void
+): Promise<ExecutionResult> {
+  const { prompt_id } = await submitPrompt(workflow);
+
+  // Try WebSocket first
+  try {
+    const { getWSClient } = await import('./comfyui-ws-client.js');
+    const wsClient = getWSClient();
+    await wsClient.connect();
+
+    return await waitWithWebSocket(wsClient, prompt_id, timeoutMs, onProgress);
+  } catch (wsError) {
+    // Fallback to polling
+    return await waitWithPolling(prompt_id, timeoutMs);
+  }
+}
+
+/**
+ * Wait for execution completion using WebSocket
+ */
+async function waitWithWebSocket(
+  wsClient: Awaited<ReturnType<typeof import('./comfyui-ws-client.js').getWSClient>>,
+  promptId: string,
+  timeoutMs: number,
+  onProgress?: (progress: import('./types/comfyui-api-types.js').ExecutionProgress) => void
+): Promise<ExecutionResult> {
+  const deadline = Date.now() + timeoutMs;
+
+  return new Promise((resolve, reject) => {
+    let subscription: ReturnType<typeof wsClient.subscribe> | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const cleanup = () => {
+      if (subscription) subscription.unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+
+    subscription = wsClient.subscribe(
+      promptId,
+      (progress) => {
+        onProgress?.(progress);
+
+        if (progress.status === 'completed') {
+          cleanup();
+          resolve({
+            prompt_id: promptId,
+            status: 'completed',
+            outputs: progress.outputs,
+          });
+        } else if (progress.status === 'failed') {
+          cleanup();
+          resolve({
+            prompt_id: promptId,
+            status: 'failed',
+            error: progress.error?.message,
+          });
+        }
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      }
+    );
+
+    timeoutId = setTimeout(() => {
+      cleanup();
+      resolve({
+        prompt_id: promptId,
+        status: 'timeout',
+        error: `Timed out after ${timeoutMs}ms`,
+      });
+    }, timeoutMs);
+  });
+}
+
+/**
+ * Wait for execution completion using polling (fallback)
+ */
+async function waitWithPolling(promptId: string, timeoutMs: number): Promise<ExecutionResult> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const entries = await getHistory(promptId);
+    if (entries.length > 0) {
+      const entry = entries[0];
+      const statusStr = (entry.status as { status_str?: string } | undefined)?.status_str;
+      const messages = (entry.status as { messages?: unknown[] } | undefined)?.messages;
+      const hasError = Boolean(messages?.length);
+      return {
+        prompt_id: promptId,
+        status: hasError ? 'failed' : 'completed',
+        outputs: entry.outputs,
+        error: hasError ? String(messages?.[0]) : undefined,
+      };
+    }
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+  return { prompt_id: promptId, status: 'timeout', error: `Timed out after ${timeoutMs}ms` };
+}
+
+/**
+ * Check if WebSocket connection is available
+ */
+export async function isWebSocketAvailable(): Promise<boolean> {
+  try {
+    const { getWSClient } = await import('./comfyui-ws-client.js');
+    const wsClient = getWSClient();
+    return wsClient.isConnected();
+  } catch {
+    return false;
+  }
+}

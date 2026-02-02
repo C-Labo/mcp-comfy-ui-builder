@@ -48,16 +48,24 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 | **list_macros** | List available macros (e.g. upscale_refine) |
 | **insert_macro(workflow_id, macro_id, input_connections)** | Insert a macro into a dynamic workflow |
 
-### Execution (COMFYUI_HOST)
+### Execution (COMFYUI_HOST) 📡 WebSocket-enhanced (v0.5.0+)
 
-| Tool | Description |
-|------|------|
-| **execute_workflow(workflow)** | Submit workflow to ComfyUI; returns prompt_id |
-| **execute_workflow_sync(workflow, timeout?)** | Submit and wait until done; returns prompt_id and outputs |
-| **get_execution_status(prompt_id)** | Status and image outputs for a prompt |
-| **get_execution_progress(prompt_id)** | Progress info (e.g. current node) while running |
-| **execute_batch(workflows, concurrency?)** | Run multiple workflows (optional concurrency) |
-| **execute_chain(steps)** | Run a chain of workflows (output of step N → input of step N+1) |
+| Tool | Description | Real-Time |
+|------|------|-----------|
+| **execute_workflow(workflow)** | Submit workflow to ComfyUI; returns prompt_id | N/A |
+| **execute_workflow_sync(workflow, timeout?, stream_progress?)** | Submit and wait until done; returns prompt_id, outputs, and progress log | ✅ WebSocket + polling fallback |
+| **execute_workflow_stream(workflow, timeout?)** | Execute with full event history (requires WebSocket) | ✅ WebSocket required |
+| **get_execution_status(prompt_id)** | Status and image outputs for a prompt | N/A |
+| **get_execution_progress(prompt_id)** | Progress info (current node, progress %, queue position) | ✅ WebSocket + polling fallback |
+| **execute_batch(workflows, concurrency?)** | Run multiple workflows with optimized shared WebSocket | ✅ Pre-connects WebSocket |
+| **execute_chain(steps)** | Run workflow chain with data passing (output N → input N+1) | ✅ Pre-connects WebSocket |
+
+**WebSocket Features:**
+- **Sub-second updates:** <100ms latency (vs 1.5s polling)
+- **Node-level tracking:** See exactly which node is executing
+- **Progress percentage:** Real-time progress (0-100%)
+- **90% reduced traffic:** Single connection vs multiple HTTP requests
+- **Auto-fallback:** Gracefully falls back to polling if WebSocket unavailable
 
 ### Outputs (COMFYUI_HOST)
 
@@ -172,6 +180,51 @@ After connecting, make sure Cursor/Claude sees the tools (e.g., in the MCP tools
 
 ***
 
+## WebSocket Configuration (v0.5.0+)
+
+For real-time execution tracking, set **COMFYUI_HOST** environment variable:
+
+```bash
+export COMFYUI_HOST="http://localhost:8188"
+```
+
+Or in `.env` file:
+```env
+COMFYUI_HOST=http://localhost:8188
+```
+
+### Verifying WebSocket Connection
+
+After setting COMFYUI_HOST, test with:
+
+```
+User: "Execute a simple workflow and show me progress"
+
+Check response for:
+- "progress_method": "websocket" ← Real-time enabled ✅
+- "progress_method": "polling" ← Fallback mode (check COMFYUI_HOST)
+```
+
+### Docker Setup
+
+When running in Docker, use service names:
+
+```yaml
+# docker-compose.yml
+services:
+  comfyui:
+    ports:
+      - "8188:8188"
+
+  mcp-server:
+    environment:
+      - COMFYUI_HOST=http://comfyui:8188  # Use service name
+```
+
+See [WEBSOCKET-GUIDE.md](WEBSOCKET-GUIDE.md) for advanced usage.
+
+***
+
 ## Troubleshooting
 
 | Problem | What to check |
@@ -180,9 +233,10 @@ After connecting, make sure Cursor/Claude sees the tools (e.g., in the MCP tools
 | **Server doesn't start** | Run `npm run build` from project root. Make sure there's a `knowledge/` folder with `base-nodes.json` and `node-compatibility.json`. |
 | **Empty node list** | File `knowledge/base-nodes.json` must contain `nodes` object. Run `npm run seed` or add nodes manually. |
 | **ENOENT error / module not found** | Run MCP from **project root** (where `knowledge/` and `dist/` are visible). In Cursor config `args` — path specifically to `dist/mcp-server.js`. |
+| **WebSocket not connecting** (progress_method: "polling") | Check: 1) ComfyUI is running (`curl http://localhost:8188/system_stats`), 2) COMFYUI_HOST is set correctly, 3) WebSocket endpoint works (`wscat -c ws://localhost:8188/ws?clientId=test`). **Note:** Polling fallback is automatic and works fine. |
 
 Example config for Cursor: [examples/cursor-mcp.json](../examples/cursor-mcp.json) (copy and substitute your path).
 
 ***
 
-*MCP Setup v1.2 | 2026-02-02*
+*MCP Setup v1.3 - WebSocket Support | 2026-02-02*

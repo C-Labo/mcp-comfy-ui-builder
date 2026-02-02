@@ -680,10 +680,11 @@ server.registerTool(
   'execute_workflow_sync',
   {
     description:
-      'Submit a ComfyUI workflow and wait until execution completes (polling). Returns prompt_id, status (completed/failed/timeout), and outputs. Use when you need the result before continuing. Requires COMFYUI_HOST.',
+      'Submit a ComfyUI workflow and wait until execution completes with real-time progress (WebSocket if available, polling fallback). Returns prompt_id, status (completed/failed/timeout), and outputs. Use when you need the result before continuing. Requires COMFYUI_HOST.',
     inputSchema: {
       workflow: z.string().describe('Workflow JSON string (from build_workflow or loaded file)'),
       timeout_ms: z.number().int().min(1000).optional().describe('Max wait in milliseconds (default 300000)'),
+      stream_progress: z.boolean().optional().describe('Stream progress updates via WebSocket (default true)'),
     },
   },
   async (args) => {
@@ -708,8 +709,31 @@ server.registerTool(
       return { content: [{ type: 'text', text: `Workflow validation failed:\n${validation.errors.join('\n')}` }] };
     }
     try {
-      const result = await comfyui.submitPromptAndWait(parsed, args.timeout_ms);
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+      const streamProgress = args.stream_progress ?? true;
+      const progressUpdates: string[] = [];
+
+      const result = await comfyui.submitPromptAndWaitWithProgress(
+        parsed,
+        args.timeout_ms,
+        streamProgress
+          ? (progress) => {
+              const status = `[${progress.status}] ${progress.current_node ?? 'waiting'}`;
+              const progressPct = progress.current_node_progress
+                ? ` (${Math.round(progress.current_node_progress * 100)}%)`
+                : '';
+              progressUpdates.push(status + progressPct);
+            }
+          : undefined
+      );
+
+      const isWebSocket = await comfyui.isWebSocketAvailable();
+      const output = {
+        ...result,
+        progress_method: isWebSocket ? 'websocket' : 'polling',
+        ...(progressUpdates.length > 0 && { progress_log: progressUpdates }),
+      };
+
+      return { content: [{ type: 'text', text: JSON.stringify(output, null, 2) }] };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `execute_workflow_sync failed: ${msg}` }] };
@@ -777,7 +801,7 @@ server.registerTool(
   'get_execution_progress',
   {
     description:
-      'Get current execution status for a prompt (same as get_execution_status). Returns status and outputs if completed. Requires COMFYUI_HOST.',
+      'Get real-time execution progress for a prompt (WebSocket if available, polling fallback). Returns status, current_node, progress%, queue_position, and outputs. Requires COMFYUI_HOST.',
     inputSchema: {
       prompt_id: z.string().describe('Prompt id returned by execute_workflow or execute_workflow_sync'),
     },
@@ -789,13 +813,39 @@ server.registerTool(
       };
     }
     try {
+      // Try WebSocket first for real-time progress
+      if (await comfyui.isWebSocketAvailable()) {
+        const { getWSClient } = await import('./comfyui-ws-client.js');
+        const wsClient = getWSClient();
+        const progress = wsClient.getProgress(args.prompt_id);
+
+        if (progress) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(
+                  {
+                    ...progress,
+                    method: 'websocket',
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          };
+        }
+      }
+
+      // Fallback to polling (existing implementation)
       const entries = await comfyui.getHistory(args.prompt_id);
       if (entries.length === 0) {
         return { content: [{ type: 'text', text: `No history for prompt_id: ${args.prompt_id}. Still running or not recorded.` }] };
       }
       const entry = entries[0];
       const outputs = entry.outputs ?? {};
-      const lines: string[] = [`prompt_id: ${args.prompt_id}`];
+      const lines: string[] = [`prompt_id: ${args.prompt_id}`, 'method: polling'];
       const statusStr = (entry.status as { status_str?: string })?.status_str;
       if (statusStr) lines.push(`status: ${statusStr}`);
       for (const [nodeId, out] of Object.entries(outputs)) {
@@ -808,6 +858,84 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `get_execution_progress failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'execute_workflow_stream',
+  {
+    description:
+      'Execute workflow with streaming real-time progress updates. Requires WebSocket support. Returns result and progress event history. Use for monitoring execution progress. Requires COMFYUI_HOST and WebSocket connection.',
+    inputSchema: {
+      workflow: z.string().describe('Workflow JSON string (from build_workflow or loaded file)'),
+      timeout_ms: z.number().int().min(1000).optional().describe('Max wait in milliseconds (default 300000)'),
+    },
+  },
+  async (args) => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [{ type: 'text', text: 'ComfyUI is not configured. Set COMFYUI_HOST.' }],
+      };
+    }
+
+    // Check WebSocket availability
+    if (!(await comfyui.isWebSocketAvailable())) {
+      try {
+        const { getWSClient } = await import('./comfyui-ws-client.js');
+        const wsClient = getWSClient();
+        await wsClient.connect();
+      } catch {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'WebSocket not available. Use execute_workflow_sync for polling-based execution.',
+            },
+          ],
+        };
+      }
+    }
+
+    let parsed: ComfyUIWorkflow;
+    try {
+      parsed = JSON.parse(args.workflow) as ComfyUIWorkflow;
+    } catch {
+      return { content: [{ type: 'text', text: 'Invalid workflow JSON.' }] };
+    }
+
+    const validation = validateWorkflow(parsed);
+    if (!validation.valid) {
+      return { content: [{ type: 'text', text: `Workflow validation failed:\n${validation.errors.join('\n')}` }] };
+    }
+
+    try {
+      type ExecutionProgress = import('./types/comfyui-api-types.js').ExecutionProgress;
+      const events: ExecutionProgress[] = [];
+
+      const result = await comfyui.submitPromptAndWaitWithProgress(parsed, args.timeout_ms, (progress) => {
+        events.push({ ...progress });
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                result,
+                event_count: events.length,
+                events: events.slice(-10), // Last 10 events
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `execute_workflow_stream failed: ${msg}` }] };
     }
   }
 );

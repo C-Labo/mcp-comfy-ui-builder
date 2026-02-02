@@ -1,733 +1,179 @@
 # MCP ComfyUI Builder - План покращень
 
-Детальний план покращень для максимальної зручності створення зображень.
+Детальний план майбутніх покращень для максимальної зручності створення зображень.
+
+**Завершені фази (1-6)** → дивіться [CHANGELOG.md](CHANGELOG.md) версії 0.3.0 та 0.4.0.
 
 ---
 
-## Поточний стан проекту
+## Поточний стан проекту (v0.4.0)
 
 | Компонент | Поточно | Ціль |
 |-----------|---------|------|
-| MCP інструменти | 18 | 35+ |
-| Шаблони workflows | 3 | 10+ |
-| Ноди в knowledge base | 31 | 100+ |
+| MCP інструменти | 40+ | 45+ |
+| Шаблони workflows | 8 | 10+ |
+| Ноди в knowledge base | 31+ | 100+ |
 | Виконання | Polling | WebSocket + Polling |
-| Будування workflows | Тільки шаблони | Шаблони + Dynamic API |
+| Будування workflows | Шаблони + Dynamic API | ✅ Done |
+| Plugin System | Data-only | ✅ Done |
+| Docker | Dockerfile готовий | Потребує тестування |
 
 ---
 
-## Фаза 1: Розширення шаблонів
+## ✅ Завершені фази
 
-### 1.1 Inpainting Template
+- **Phase 1:** Розширення шаблонів (inpainting, upscale, lora, controlnet, batch) — v0.3.0
+- **Phase 2:** Dynamic Workflow Builder API — v0.3.0
+- **Phase 3:** Node Discovery Enhancement (hybrid discovery, live sync) — v0.3.0
+- **Phase 4:** Execution Improvements (batch, chaining, output management) — v0.3.0
+- **Phase 5:** Model Management — v0.3.0
+- **Phase 6:** Workflow Composition (templates, macros, chaining) — v0.4.0
 
-**Призначення:** Редагування частини зображення по масці.
-
-**Граф нод:**
-```
-LoadImage (image)
-    ↓
-LoadImageMask (mask) → SetLatentNoiseMask
-    ↓                      ↓
-VAEEncode ←────────────────┘
-    ↓
-CheckpointLoaderSimple → CLIPTextEncode (positive)
-    ↓                  → CLIPTextEncode (negative)
-    ↓                      ↓
-KSampler ←─────────────────┘
-    ↓
-VAEDecode
-    ↓
-SaveImage
-```
-
-**Параметри:**
-| Параметр | Тип | Default | Опис |
-|----------|-----|---------|------|
-| image | string | required | Вхідне зображення |
-| mask | string | required | Маска (біле = область редагування) |
-| prompt | string | required | Текстовий промпт |
-| negative_prompt | string | "" | Негативний промпт |
-| steps | number | 20 | Кількість кроків |
-| cfg | number | 7.0 | CFG scale |
-| seed | number | random | Seed |
-| denoise | number | 0.85 | Сила редагування |
-| ckpt_name | string | auto | Модель checkpoint |
-
-**Файли для зміни:**
-- `src/workflow/workflow-builder.ts` - додати `buildInpainting()`
-- `knowledge/base-nodes.json` - додати `LoadImageMask`, `SetLatentNoiseMask`
-- `tests/workflow-builder.test.ts` - тести
+Детальний опис → [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-### 1.2 Upscaling Template
+## 🔮 Майбутні плани
 
-**Призначення:** Збільшення роздільної здатності зображення.
+### Фаза 7: Docker та Розширення Plugin System
 
-**Варіант A - Простий upscale:**
-```
-LoadImage → UpscaleModelLoader → ImageUpscaleWithModel → SaveImage
-```
+#### 7.1 Docker Testing та Publishing
 
-**Варіант B - Upscale + Refinement:**
-```
-LoadImage → UpscaleModelLoader → ImageUpscaleWithModel
-                                        ↓
-                                   VAEEncode
-                                        ↓
-CheckpointLoaderSimple → CLIPTextEncode → KSampler (denoise=0.3)
-                                               ↓
-                                          VAEDecode
-                                               ↓
-                                          SaveImage
-```
+**Статус:** Dockerfile та docker-compose.example.yml готові, потребують тестування.
 
-**Параметри:**
-| Параметр | Тип | Default | Опис |
-|----------|-----|---------|------|
-| image | string | required | Вхідне зображення |
-| upscale_model | string | "RealESRGAN_x4plus.pth" | Модель upscale |
-| scale | number | 4 | Множник (2x, 4x) |
-| refine | boolean | false | Чи робити refinement |
-| denoise | number | 0.3 | Сила refinement |
-| prompt | string | "" | Промпт для refinement |
-
-**Файли для зміни:**
-- `src/workflow/workflow-builder.ts` - додати `buildUpscale()`
-- `knowledge/base-nodes.json` - додати `UpscaleModelLoader`, `ImageUpscaleWithModel`
-
----
-
-### 1.3 LoRA Template
-
-**Призначення:** Text-to-image з LoRA моделями.
-
-**Граф нод:**
-```
-CheckpointLoaderSimple
-        ↓
-LoraLoader (може бути декілька в ланцюжку)
-        ↓
-CLIPTextEncode (positive) ←───┐
-CLIPTextEncode (negative) ←───┤
-        ↓                     │
-EmptyLatentImage              │
-        ↓                     │
-KSampler ←────────────────────┘
-        ↓
-VAEDecode
-        ↓
-SaveImage
-```
-
-**Параметри:**
-| Параметр | Тип | Default | Опис |
-|----------|-----|---------|------|
-| prompt | string | required | Промпт |
-| negative_prompt | string | "" | Негативний промпт |
-| loras | array | required | Масив LoRA: `[{name, strength_model, strength_clip}]` |
-| width | number | 1024 | Ширина |
-| height | number | 1024 | Висота |
-| steps | number | 20 | Кроки |
-| cfg | number | 7.0 | CFG |
-| seed | number | random | Seed |
-| ckpt_name | string | auto | Checkpoint |
-
-**Приклад використання:**
-```json
-{
-  "template": "txt2img_lora",
-  "params": {
-    "prompt": "a beautiful landscape",
-    "loras": [
-      {"name": "detailed_v2.safetensors", "strength_model": 0.8, "strength_clip": 0.8},
-      {"name": "more_details.safetensors", "strength_model": 0.5, "strength_clip": 0.5}
-    ]
-  }
-}
-```
-
----
-
-### 1.4 ControlNet Template
-
-**Призначення:** Генерація з контролем структури через ControlNet.
-
-**Граф нод:**
-```
-LoadImage (control_image)
-        ↓
-ControlNetLoader → ControlNetApply
-        ↓               ↓
-        └───────────────┘
-                ↓
-CheckpointLoaderSimple → CLIPTextEncode (positive)
-                       → CLIPTextEncode (negative)
-                              ↓
-EmptyLatentImage              │
-        ↓                     │
-KSampler ←────────────────────┘
-        ↓
-VAEDecode
-        ↓
-SaveImage
-```
-
-**Параметри:**
-| Параметр | Тип | Default | Опис |
-|----------|-----|---------|------|
-| control_image | string | required | Контрольне зображення |
-| controlnet_name | string | required | Модель ControlNet |
-| strength | number | 1.0 | Сила впливу (0.0-2.0) |
-| prompt | string | required | Промпт |
-| negative_prompt | string | "" | Негативний промпт |
-| width | number | 1024 | Ширина |
-| height | number | 1024 | Висота |
-| steps | number | 20 | Кроки |
-| cfg | number | 7.0 | CFG |
-
-**Варіанти (preprocessors):**
-- `controlnet_canny` - контроль по контурах
-- `controlnet_depth` - контроль по глибині
-- `controlnet_pose` - контроль по позі
-
----
-
-### 1.5 Batch Processing Template
-
-**Призначення:** Генерація серії зображень з варіаціями.
-
-**Параметри:**
-| Параметр | Тип | Default | Опис |
-|----------|-----|---------|------|
-| base_params | object | required | Базові параметри txt2img |
-| variations | array | required | Масив варіацій seed/prompt |
-| batch_size | number | 1 | Кількість в одному batch |
-
----
-
-## Фаза 2: Dynamic Workflow Builder
-
-### 2.1 Архітектура
-
-**Новий файл:** `src/workflow/dynamic-builder.ts`
-
-```typescript
-// Контекст workflow в пам'яті
-interface WorkflowContext {
-  id: string;
-  workflow: ComfyUIWorkflow;
-  nodeCounter: number;
-  createdAt: Date;
-}
-
-// Публічний API
-export function createWorkflow(): WorkflowContext;
-export function addNode(ctx: WorkflowContext, classType: string, inputs?: Record<string, unknown>): string;
-export function connectNodes(ctx: WorkflowContext, fromNodeId: string, outputIndex: number, toNodeId: string, inputName: string): void;
-export function removeNode(ctx: WorkflowContext, nodeId: string): void;
-export function setNodeInput(ctx: WorkflowContext, nodeId: string, inputName: string, value: unknown): void;
-export function getWorkflow(ctx: WorkflowContext): ComfyUIWorkflow;
-export function validateWorkflow(ctx: WorkflowContext): ValidationResult;
-```
-
-**Новий файл:** `src/workflow/workflow-store.ts`
-
-```typescript
-// In-memory сховище з TTL
-class WorkflowStore {
-  private contexts: Map<string, WorkflowContext>;
-  private readonly ttl: number = 30 * 60 * 1000; // 30 хвилин
-
-  create(): string;
-  get(id: string): WorkflowContext | null;
-  update(id: string, ctx: WorkflowContext): void;
-  delete(id: string): void;
-  cleanup(): void; // Видалити старі контексти
-}
-```
-
-### 2.2 Нові MCP інструменти
-
-| Інструмент | Вхід | Вихід | Опис |
-|------------|------|-------|------|
-| `create_workflow` | - | workflow_id | Створити порожній workflow |
-| `add_node` | workflow_id, class_type, inputs? | node_id | Додати ноду |
-| `connect_nodes` | workflow_id, from_node, output_idx, to_node, input_name | success | З'єднати ноди |
-| `remove_node` | workflow_id, node_id | success | Видалити ноду |
-| `set_node_input` | workflow_id, node_id, input_name, value | success | Встановити вхід |
-| `get_workflow_json` | workflow_id | workflow JSON | Отримати поточний JSON |
-| `validate_workflow` | workflow_id | validation result | Перевірити валідність |
-| `finalize_workflow` | workflow_id | workflow JSON | Завершити і отримати JSON |
-
-### 2.3 Приклад використання
-
-```
-1. create_workflow() → "wf_abc123"
-2. add_node("wf_abc123", "CheckpointLoaderSimple") → "1"
-3. add_node("wf_abc123", "CLIPTextEncode", {text: "a cat"}) → "2"
-4. connect_nodes("wf_abc123", "1", 1, "2", "clip")
-5. add_node("wf_abc123", "EmptyLatentImage", {width: 512, height: 512}) → "3"
-6. add_node("wf_abc123", "KSampler") → "4"
-7. connect_nodes("wf_abc123", "1", 0, "4", "model")
-8. connect_nodes("wf_abc123", "2", 0, "4", "positive")
-9. connect_nodes("wf_abc123", "3", 0, "4", "latent_image")
-10. validate_workflow("wf_abc123") → {valid: true}
-11. get_workflow_json("wf_abc123") → {...}
-12. execute_workflow({...})
-```
-
----
-
-## Фаза 3: Node Discovery Enhancement
-
-### 3.1 Live Discovery з ComfyUI
-
-**Зміни в:** `src/comfyui-client.ts`
-
-```typescript
-interface ObjectInfoNode {
-  input: {
-    required?: Record<string, [string, unknown]>;
-    optional?: Record<string, [string, unknown]>;
-  };
-  output: string[];
-  output_name: string[];
-  category: string;
-  description?: string;
-}
-
-async function getObjectInfo(): Promise<Record<string, ObjectInfoNode>>;
-```
-
-### 3.2 Hybrid Discovery
-
-**Новий файл:** `src/node-discovery/hybrid-discovery.ts`
-
-```typescript
-class HybridNodeDiscovery {
-  private cache: Map<string, ObjectInfoNode>;
-  private cacheExpiry: number = 5 * 60 * 1000; // 5 хвилин
-
-  // Отримати з live ComfyUI, fallback на knowledge base
-  async getNode(name: string): Promise<NodeInfo>;
-
-  // Пошук по всіх джерелах
-  async searchNodes(query: string, filters?: NodeFilters): Promise<NodeInfo[]>;
-
-  // Синхронізувати live → knowledge base
-  async syncToKnowledgeBase(): Promise<SyncResult>;
-}
-```
-
-### 3.3 Нові MCP інструменти
-
-| Інструмент | Опис |
-|------------|------|
-| `discover_nodes_live` | Отримати всі ноди з працюючого ComfyUI |
-| `search_nodes` | Пошук по name, category, input/output types |
-| `get_node_inputs` | Детальна інфо про входи ноди |
-| `get_node_outputs` | Детальна інфо про виходи ноди |
-| `list_node_categories` | Список всіх категорій |
-| `sync_nodes_to_knowledge` | Синхронізувати live → knowledge base |
-
----
-
-## Фаза 4: Execution Improvements
-
-### 4.1 WebSocket Client
-
-**Новий файл:** `src/comfyui-ws-client.ts`
-
-```typescript
-interface ExecutionProgress {
-  prompt_id: string;
-  status: 'queued' | 'started' | 'executing' | 'completed' | 'error';
-  current_node?: string;
-  current_node_progress?: number;
-  queue_position?: number;
-  outputs?: Record<string, unknown>;
-  error?: string;
-}
-
-class ComfyUIWebSocket {
-  constructor(host: string);
-
-  connect(clientId: string): Promise<void>;
-  disconnect(): void;
-
-  // Callbacks
-  onProgress(callback: (progress: ExecutionProgress) => void): void;
-  onNodeStart(callback: (nodeId: string, nodeType: string) => void): void;
-  onNodeComplete(callback: (nodeId: string, output: unknown) => void): void;
-  onError(callback: (error: Error) => void): void;
-
-  // Синхронне виконання з очікуванням
-  submitAndWait(workflow: ComfyUIWorkflow, timeout?: number): Promise<ExecutionResult>;
-}
-```
-
-### 4.2 Batch Executor
-
-**Новий файл:** `src/workflow/batch-executor.ts`
-
-```typescript
-interface BatchConfig {
-  workflows: ComfyUIWorkflow[];
-  concurrency: number;
-  stopOnError: boolean;
-  onProgress?: (index: number, total: number, progress: ExecutionProgress) => void;
-}
-
-interface BatchResult {
-  index: number;
-  prompt_id: string;
-  status: 'completed' | 'failed';
-  outputs?: Record<string, unknown>;
-  error?: string;
-}
-
-async function executeBatch(config: BatchConfig): Promise<BatchResult[]>;
-```
-
-### 4.3 Output Manager
-
-**Новий файл:** `src/output-manager.ts`
-
-```typescript
-interface OutputFile {
-  prompt_id: string;
-  node_id: string;
-  type: 'image' | 'text' | 'audio' | 'video';
-  filename: string;
-  subfolder: string;
-  url: string;
-}
-
-class OutputManager {
-  async listOutputs(prompt_id: string): Promise<OutputFile[]>;
-  async downloadOutput(file: OutputFile, destPath: string): Promise<string>;
-  async downloadAllOutputs(prompt_id: string, destDir: string): Promise<string[]>;
-  async deleteOutputs(prompt_id: string): Promise<void>;
-}
-```
-
-### 4.4 Нові/покращені MCP інструменти
-
-| Інструмент | Опис |
-|------------|------|
-| `execute_workflow_sync` | Виконати і дочекатись результату |
-| `get_execution_progress` | Real-time progress (WebSocket) |
-| `execute_batch` | Виконати декілька workflows |
-| `list_outputs` | Список файлів результату |
-| `download_output` | Завантажити файл |
-| `download_all_outputs` | Завантажити всі файли |
-
----
-
-## Фаза 5: Model Management
-
-### 5.1 Model Manager
-
-**Новий файл:** `src/model-manager.ts`
-
-```typescript
-type ModelType = 'checkpoint' | 'lora' | 'vae' | 'controlnet' | 'upscale' | 'embedding' | 'clip';
-
-interface ModelInfo {
-  name: string;
-  type: ModelType;
-  path: string;
-  size?: number;
-  hash?: string;
-  metadata?: Record<string, unknown>;
-}
-
-class ModelManager {
-  constructor(comfyPath: string);
-
-  // Discovery
-  async listModels(type?: ModelType): Promise<ModelInfo[]>;
-  async getModelInfo(name: string, type: ModelType): Promise<ModelInfo | null>;
-  async checkModelExists(name: string, type: ModelType): Promise<boolean>;
-
-  // Workflow analysis
-  async getRequiredModels(workflow: ComfyUIWorkflow): Promise<ModelRequirement[]>;
-  async checkWorkflowModels(workflow: ComfyUIWorkflow): Promise<ModelCheckResult>;
-}
-```
-
-### 5.2 Нові MCP інструменти
-
-| Інструмент | Опис |
-|------------|------|
-| `list_models` | Список моделей по типу |
-| `get_model_info` | Деталі моделі |
-| `check_model_exists` | Перевірка наявності |
-| `get_workflow_models` | Які моделі потрібні для workflow |
-| `check_workflow_models` | Перевірка наявності всіх моделей |
-
----
-
-## Фаза 6: Workflow Composition
-
-### 6.1 Parameterized Templates
-
-**Новий файл:** `src/workflow/workflow-template.ts`
-
-```typescript
-interface ParameterDefinition {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'select' | 'array';
-  required: boolean;
-  default?: unknown;
-  options?: unknown[]; // для select
-  description?: string;
-  nodeBindings: Array<{nodeId: string; inputName: string}>;
-}
-
-interface WorkflowTemplate {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  parameters: ParameterDefinition[];
-  workflow: ComfyUIWorkflow;
-}
-
-function createTemplate(workflow: ComfyUIWorkflow, params: ParameterDefinition[]): WorkflowTemplate;
-function applyTemplate(template: WorkflowTemplate, values: Record<string, unknown>): ComfyUIWorkflow;
-function validateTemplateParams(template: WorkflowTemplate, values: Record<string, unknown>): ValidationResult;
-```
-
-### 6.2 Macros (Sub-workflows)
-
-**Новий файл:** `src/workflow/macro.ts`
-
-```typescript
-interface MacroPort {
-  name: string;
-  type: string;
-  nodeId: string;
-  portIndex: number;
-}
-
-interface Macro {
-  id: string;
-  name: string;
-  description: string;
-  inputs: MacroPort[];
-  outputs: MacroPort[];
-  nodes: ComfyUIWorkflow;
-}
-
-// Вбудовані макроси
-const BUILTIN_MACROS = {
-  'upscale_refine': {...},    // Upscale + KSampler refinement
-  'face_detail': {...},        // Face detection + inpainting
-  'controlnet_canny': {...},   // Canny preprocessor + ControlNet
-};
-
-function insertMacro(ctx: WorkflowContext, macro: Macro, inputConnections: Record<string, [string, number]>): MacroInsertResult;
-function createMacroFromSelection(workflow: ComfyUIWorkflow, nodeIds: string[]): Macro;
-```
-
-### 6.3 Workflow Chaining
-
-**Новий файл:** `src/workflow/chainer.ts`
-
-```typescript
-interface ChainStep {
-  workflow: ComfyUIWorkflow | string; // JSON або назва збереженого
-  params?: Record<string, unknown>;
-  inputFrom?: {
-    step: number;
-    outputNode: string;
-    outputIndex: number;
-  };
-  outputTo?: string; // input name для наступного кроку
-}
-
-interface ChainResult {
-  stepIndex: number;
-  prompt_id: string;
-  status: 'completed' | 'failed';
-  outputs: Record<string, unknown>;
-}
-
-async function executeChain(steps: ChainStep[]): Promise<ChainResult[]>;
-```
-
-**Приклад ланцюжка:**
-```
-Step 1: txt2img → генерує зображення
-Step 2: upscale (input = output step 1) → збільшує
-Step 3: img2img (input = output step 2, denoise=0.3) → покращує деталі
-```
-
-### 6.4 Нові MCP інструменти
-
-| Інструмент | Опис |
-|------------|------|
-| `create_template` | Створити template з workflow |
-| `list_templates` | (розширити) Список з параметрами |
-| `apply_template` | Застосувати template з параметрами |
-| `list_macros` | Список доступних макросів |
-| `insert_macro` | Вставити макрос в workflow |
-| `execute_chain` | Виконати ланцюжок workflows |
-
----
-
-## Фаза 7: Docker та Plugin System
-
-### 7.1 Docker образи
-
-**Мета:** зробити розгортання MCP-сервера (і за бажанням Web UI) повторюваним, без ручних налаштувань Node/COMFYUI_HOST.
-
-**Варіанти:**
-- **Variant A — MCP-only image:**
-  - Окремий контейнер з Node + `mcp-comfy-ui-builder` (без ComfyUI).
-  - Підключення до окремого контейнера з ComfyUI через `COMFYUI_HOST` (наприклад, `http://comfyui:8188`).
-- **Variant B — MCP + Web UI:**
-  - Multi-stage build: спочатку build `web/`, далі Node-образ, який роздає статичний UI (наприклад, через `serve` або невеликий Express).
+**Завдання:**
+- [ ] Протестувати Docker build локально
+- [ ] Протестувати docker-compose стек з ComfyUI
+- [ ] Опублікувати образ на Docker Hub або GitHub Container Registry
+- [ ] Оновити doc/DOCKER-SETUP.md з реальними прикладами
+- [ ] Додати CI/CD для автоматичної публікації образів
 
 **Файли:**
-- `Dockerfile` — базовий образ (Node 20+, dist/mcp-server.js, entrypoint для MCP).
-- `Dockerfile.web` або multi-stage у тому ж файлі — збирання `web/`.
-- `docker-compose.example.yml`:
-  - сервіс `comfyui` (офіційний/існуючий образ ComfyUI),
-  - сервіс `mcp-comfy-ui-builder` (цей проект),
-  - опційно сервіс `web` (Workflow Studio),
-  - спільні volume для моделей/виводу.
+- ✅ `Dockerfile` — готовий (multi-stage build)
+- ✅ `docker-compose.example.yml` — готовий
+- ✅ `doc/DOCKER-SETUP.md` — готовий
+- [ ] `.github/workflows/docker-publish.yml` — CI/CD для публікації
 
-**Налаштування:**
-- Env vars у `docker-compose.example.yml`:
-  - `COMFYUI_HOST=http://comfyui:8188`,
-  - `COMFYUI_PATH=/data/comfyui` (volume з моделями),
-  - `NODE_ENV=production`.
-- Документація в `doc/GETTING-STARTED.md` / окремому `doc/DOCKER-SETUP.md`:
-  - як підняти стек `docker compose up`,
-  - як опублікувати свій образ на Docker Hub / GHCR.
+#### 7.2 Розширення Plugin System
 
-### 7.2 Plugin System (templates/macros/tools)
+**Статус:** Базова система плагінів реалізована (v0.4.0), можна додати розширення.
 
-**Мета:** дозволити користувачам додавати свої пакети (templates, macros, chains, presets) без форку репозиторію.
+**Можливі розширення:**
+- [ ] **Plugin marketplace** — каталог community plugins
+- [ ] **MCP tool для встановлення** — `install_plugin(url)` з GitHub
+- [ ] **Plugin dependencies** — залежності між плагінами
+- [ ] **Versioning** — перевірка сумісності версій
+- [ ] **Custom node presets** — плагіни з рекомендаціями по встановленню custom nodes
+- [ ] **Workflow collections** — пакети готових workflow від спільноти
 
-**Формат плагіна:**
-- Каталог у `plugins/<plugin-id>/` з файлом `plugin.json`:
-  - `id`, `name`, `version`, `author`,
-  - `templates`: масив описів templates (id, description, parameters, workflow JSON або посилання на saved workflow),
-  - `macros`: масив описів macros (ports + внутрішній workflow),
-  - опційно `chains`: опис стандартних ланцюжків (маски для execute_chain).
+**Поточна реалізація (v0.4.0):**
+- ✅ Data-only plugin system з JSON schemas
+- ✅ Plugin loader з валідацією
+- ✅ Macro registry
+- ✅ MCP tools: list_plugins, reload_plugins
+- ✅ Example plugin included
 
-**Loader:**
-- **Новий файл:** `src/plugins/plugin-loader.ts`
-  - знаходить усі `plugins/*/plugin.json`,
-  - валідовує схему,
-  - будує runtime registry:
-    - extra templates → додаються до `workflow-template.ts`,
-    - extra macros → додаються до `macro.ts`,
-    - extra chains/presets → доступні в `chainer.ts`.
-- Ініціалізація в `src/mcp-server.ts`:
-  - при старті server читає plugins і реєструє їх у відповідних модулях.
+### Фаза 8: WebSocket Support
 
-**Нові/розширені MCP інструменти:**
-- `list_plugins` — список встановлених плагінів (id, name, версія, джерело).
-- `reload_plugins` — перезавантажити registry без перезапуску сервера (best-effort).
-- `list_templates` / `list_macros` — вже повертають **core + plugin** entries (позначати джерело у метаданих).
+**Мета:** Real-time виконання з миттєвим feedback через WebSocket.
 
-**Безпека та обмеження:**
-- Плагіни описуються **даними** (JSON), без довільного виконуваного коду.
-- Workflow JSON з плагінів проходять ті ж перевірки, що й звичайні (validate_workflow, check_workflow_models).
-- Встановлення плагінів описується окремо (manual: скопіювати каталог; окремий MCP tool для завантаження з GitHub — опційно, поза межами поточної фази).
+**Завдання:**
+- [ ] **ComfyUI WebSocket client** (`src/comfyui-ws-client.ts`)
+  - Підключення до ComfyUI WebSocket API
+  - Real-time progress tracking
+  - Node-level execution callbacks
+- [ ] **Streaming execution API**
+  - `execute_workflow_stream` — streaming updates через MCP
+  - Progress events з current_node, progress%, queue_position
+- [ ] **MCP improvements**
+  - `get_execution_progress` з real-time даними (не polling)
+  - `interrupt_execution` — зупинити виконання
 
-## Зведена таблиця змін
-
-### Файли для модифікації
-
-| Файл | Фази | Зміни |
-|------|------|-------|
-| `src/workflow/workflow-builder.ts` | 1 | +4 templates |
-| `src/mcp-server.ts` | 1-6 | +20 tools |
-| `src/comfyui-client.ts` | 3, 4 | +getObjectInfo, WebSocket |
-| `knowledge/base-nodes.json` | 1, 3 | +ноди |
-| `src/types/node-types.ts` | 2, 3 | +типи |
-| `src/workflow/workflow-template.ts`, `src/workflow/macro.ts`, `src/workflow/chainer.ts` | 6-7 | Підтримка plugin-templates/macros/chains |
-| `src/plugins/plugin-loader.ts` | 7 | Loader plugins (templates/macros/chains) |
-| `src/mcp-server.ts` | 7 | +list_plugins, reload_plugins, інтеграція plugin registry |
-| `doc/GETTING-STARTED.md`, `doc/MCP-SETUP.md`, `doc/workflow-builder.md`, `doc/AI-ASSISTANT-GUIDE.md` | 1-7 | Оновлення під нові шаблони, інструменти, Docker, plugins |
-
-### Нові файли
-
-| Файл | Фаза | Призначення |
-|------|------|-------------|
-| `src/workflow/dynamic-builder.ts` | 2 | Dynamic API |
-| `src/workflow/workflow-store.ts` | 2 | In-memory store |
-| `src/node-discovery/hybrid-discovery.ts` | 3 | Merged discovery |
-| `src/comfyui-ws-client.ts` | 4 | WebSocket client |
-| `src/workflow/batch-executor.ts` | 4 | Batch execution |
-| `src/output-manager.ts` | 4 | Output files |
-| `src/model-manager.ts` | 5 | Model discovery |
-| `src/workflow/workflow-template.ts` | 6 | Templates |
-| `src/workflow/macro.ts` | 6 | Macros |
-| `src/workflow/chainer.ts` | 6 | Chaining |
-| `src/plugins/plugin-loader.ts` | 7 | Завантаження плагінів (templates/macros/chains) |
-| `plugins/example/` | 7 | Приклад плагіна (plugin.json + workflows) |
-| `Dockerfile`, `docker-compose.example.yml` | 7 | Docker образи та приклад стеку |
+**Переваги:**
+- Миттєвий feedback під час генерації
+- Знижене навантаження (без polling)
+- Детальна інформація про прогрес кожної ноди
 
 ---
 
-## Залежності та порядок
+### Фаза 9: Knowledge Base Expansion
 
-```
-Фаза 1 ──────────────────────► Незалежна, починати першою
-    │
-    ▼
-Фаза 2 ──────────────────────► Використовує ноди з Фази 1
-    │
-    ├────► Фаза 3 ───────────► Паралельно з Фазою 2
-    │
-    ▼
-Фаза 4 ──────────────────────► Після Фази 2 (batch потребує workflows)
-    │
-    ├────► Фаза 5 ───────────► Паралельно з Фазою 4
-    │
-    ▼
-Фаза 6 ──────────────────────► Після Фаз 2, 4, 5
-    │
-    ▼
-Фаза 7 ──────────────────────► Залежить від 1–6 (Docker та plugins поверх існуючого API)
-```
+**Мета:** Розширити базу знань до 100+ нод.
+
+**Завдання:**
+- [ ] Додати популярні custom node packs в knowledge base
+  - ComfyUI-Manager top 50 packs
+  - Essential nodes (Efficiency Nodes, Impact Pack, etc.)
+- [ ] Автоматизувати оновлення knowledge base
+  - Scheduled sync з custom-node-list.json
+  - Auto-detection нових пакетів
+- [ ] Node usage statistics
+  - Tracking найпопулярніших нод
+  - Рекомендації на основі статистики
+- [ ] Advanced compatibility checking
+  - Type inference для складних типів
+  - Automatic conversion suggestions
 
 ---
 
-## Тестування та верифікація
+### Фаза 10: Quality of Life Features
 
-### Unit тести (кожна фаза)
-```bash
-npm test
-```
+**Мета:** Покращення user experience.
 
-### Integration тести
-```bash
-# Запустити ComfyUI
-# Запустити MCP сервер
-npm run mcp
+**Можливі фічі:**
+- [ ] **Workflow validation improvements**
+  - Більш детальні помилки
+  - Suggestions для виправлення
+  - Visual graph validation
+- [ ] **Template improvements**
+  - Template inheritance
+  - Conditional parameters
+  - Parameter validation rules
+- [ ] **Workflow optimization**
+  - Automatic node deduplication
+  - Unused node removal
+  - Performance suggestions
+- [ ] **Export/Import**
+  - Export workflow as ComfyUI-compatible JSON
+  - Import ComfyUI workflows
+  - Workflow sharing formats
+- [ ] **Better documentation**
+  - Interactive examples
+  - Video tutorials
+  - API playground
 
-# Тестові сценарії в Claude/Cursor:
-# 1. build_workflow("inpainting", {...}) → execute
-# 2. create_workflow → add_node → connect → execute
-# 3. discover_nodes_live → search_nodes
-# 4. execute_workflow_sync → list_outputs
-# 5. list_models → check_workflow_models
-# 6. execute_chain
-```
+---
 
-### Чекліст для кожної фази
+## Пріоритети розробки
 
-- [ ] Код компілюється без помилок
-- [ ] Unit тести проходять
-- [ ] MCP сервер стартує
-- [ ] Нові tools доступні в Claude/Cursor
-- [ ] Workflow виконується в ComfyUI
-- [ ] Документація оновлена
+### Високий пріоритет
+1. **Docker testing** (Фаза 7.1) — готові файли, потрібне тестування
+2. **WebSocket support** (Фаза 8) — значне покращення UX
+3. **Knowledge base expansion** (Фаза 9) — більше нод = більше можливостей
+
+### Середній пріоритет
+4. **Plugin marketplace** (Фаза 7.2) — community contributions
+5. **Workflow validation improvements** (Фаза 10) — краща developer experience
+6. **Template improvements** (Фаза 10) — більше гнучкості
+
+### Низький пріоритет
+7. **Plugin dependencies** (Фаза 7.2) — nice to have
+8. **Node usage statistics** (Фаза 9) — analytics
+9. **Export/Import** (Фаза 10) — додаткові формати
+
+---
+
+## Як контрибутити
+
+Детальний опис завершених фаз → [CHANGELOG.md](CHANGELOG.md)
+
+Для додавання нових фіч:
+1. Створіть issue з описом фічі
+2. Обговоріть підхід з maintainers
+3. Реалізуйте з тестами
+4. Оновіть документацію
+5. Створіть PR
+
+---
+
+*Останнє оновлення: 2026-02-02*

@@ -156,33 +156,150 @@ jq -r 'keys | map(select(startswith("WAS_") or startswith("Impact_")))[]' object
 ***
 
 ## 📡 **WebSocket Messages Reference**
-### Incoming (Client → Server)
-```json
-{"type": "status", "data": {"node_id": "6", "title": "KSampler"}}
+
+### Connection
+```bash
+# Connect with unique client ID
+CLIENT_ID=$(uuidgen)
+wscat -c "ws://127.0.0.1:8188/ws?clientId=$CLIENT_ID"
 ```
 
-### Outgoing (Server → Client)
+### Event Types (Server → Client)
+
+#### 1️⃣ **executing** - Node Execution Started/Finished
 ```json
-// Progress
-{"type": "progress", "data": {"value": 0.5}}
-
-// Node status
-{"type": "status", "data": {
-  "node_id": "6",
-  "title": "KSampler",
-  "status": {"title": "Progress", "value": 0.25}
-}}
-
-// Execution complete
-{"type": "executed", "data": {
-  "node_id": "7",
-  "output": {
-    "images": [{"filename": "00001.png", "subfolder": "output", "type": "output"}]
+// Node started
+{
+  "type": "executing",
+  "data": {
+    "prompt_id": "abc-123",
+    "node": "6",           // Current node ID
+    "display_node": "6"    // Display node ID (optional)
   }
-}}
+}
 
-// Workflow complete
-{"type": "execution_cached", "nodes": {...}}
+// Execution finished (node = null)
+{
+  "type": "executing",
+  "data": {
+    "prompt_id": "abc-123",
+    "node": null           // null = execution complete
+  }
+}
+```
+
+#### 2️⃣ **progress** - Real-time Progress Updates
+```json
+{
+  "type": "progress",
+  "data": {
+    "value": 5,            // Current step
+    "max": 20,             // Total steps
+    "prompt_id": "abc-123",
+    "node": "6"            // Node ID (optional)
+  }
+}
+// Progress percentage: value / max = 0.25 (25%)
+```
+
+#### 3️⃣ **executed** - Node Completed with Outputs
+```json
+{
+  "type": "executed",
+  "data": {
+    "prompt_id": "abc-123",
+    "node": "7",           // Completed node ID
+    "output": {
+      "images": [
+        {
+          "filename": "ComfyUI_00001_.png",
+          "subfolder": "",
+          "type": "output"
+        }
+      ],
+      "text": ["Generated caption..."]  // Text outputs (optional)
+    }
+  }
+}
+```
+
+#### 4️⃣ **status** - Queue Status Updates
+```json
+{
+  "type": "status",
+  "data": {
+    "status": {
+      "exec_info": {
+        "queue_remaining": 3   // Number of items in queue
+      }
+    }
+  }
+}
+```
+
+#### 5️⃣ **execution_error** - Execution Failed
+```json
+{
+  "type": "execution_error",
+  "data": {
+    "prompt_id": "abc-123",
+    "node_id": "6",
+    "node_type": "KSampler",
+    "exception_message": "Model file not found: sd_xl_base_1.0.safetensors",
+    "exception_type": "FileNotFoundError",
+    "traceback": [
+      "File \"/ComfyUI/nodes.py\", line 123, in load_checkpoint",
+      "    raise FileNotFoundError(f'Model file not found: {ckpt_name}')"
+    ],
+    "current_inputs": {
+      "seed": 12345,
+      "steps": 20
+    },
+    "current_outputs": {}
+  }
+}
+```
+
+#### 6️⃣ **execution_cached** - Cached Nodes (Skip Execution)
+```json
+{
+  "type": "execution_cached",
+  "data": {
+    "prompt_id": "abc-123",
+    "nodes": ["1", "2", "3"]   // Node IDs using cached results
+  }
+}
+```
+
+### Event Flow Example
+```
+1. executing (node = "6")      → Node 6 started
+2. progress (5/20)             → 25% complete
+3. progress (10/20)            → 50% complete
+4. progress (20/20)            → 100% complete
+5. executed (node = "6")       → Node 6 outputs
+6. executing (node = "7")      → Node 7 started
+7. executed (node = "7")       → Node 7 outputs (images)
+8. executing (node = null)     → Execution finished
+```
+
+### Real-time Monitoring Script
+```bash
+#!/bin/bash
+# Monitor workflow execution
+CLIENT_ID=$(uuidgen)
+echo "Monitoring with client: $CLIENT_ID"
+
+# Start WebSocket listener
+wscat -c "ws://127.0.0.1:8188/ws?clientId=$CLIENT_ID" &
+
+# Submit workflow
+curl -X POST http://127.0.0.1:8188/prompt \
+  -H "Content-Type: application/json" \
+  -d @workflow.json
+
+# Watch progress in WebSocket output
+wait
 ```
 
 ***
@@ -256,7 +373,7 @@ curl http://127.0.0.1:8188/object_info | jq '. | with_entries(select(.key | IN([
 
 **Quick Reference Complete! Copy-paste ready 🚀**
 
-*Version: 1.0.0*  
-*Updated: 2026-02-01*  
-*Endpoints: 8 core APIs*  
+*Version: 1.1.0*
+*Updated: 2026-02-02*
+*Endpoints: 8 core APIs + 6 WebSocket events*
 *Ready for production use!*

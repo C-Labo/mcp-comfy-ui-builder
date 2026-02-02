@@ -1,6 +1,6 @@
 /**
  * Workflow chaining: run workflows in sequence, passing output image from one step to the next.
- * Uses submitPromptAndWait and prepareImageForWorkflow to pipe images between steps.
+ * Uses WebSocket for real-time progress (with polling fallback).
  */
 import * as comfyui from '../comfyui-client.js';
 import { loadWorkflow } from './workflow-storage.js';
@@ -83,6 +83,7 @@ async function resolveStepWorkflow(
 /**
  * Execute a chain of workflows. Each step runs after the previous completes.
  * If inputFrom is set, the output image from that step is uploaded and set as the next workflow's image input (outputTo).
+ * Pre-connects WebSocket for optimized chain execution.
  */
 export async function executeChain(
   steps: ChainStep[],
@@ -91,6 +92,17 @@ export async function executeChain(
   const timeoutMs = config?.timeoutMs ?? 300_000;
   const stopOnError = config?.stopOnError ?? false;
   const results: ChainResult[] = [];
+
+  // Pre-connect WebSocket for chain execution
+  let useWebSocket = false;
+  try {
+    const { getWSClient } = await import('../comfyui-ws-client.js');
+    const wsClient = getWSClient();
+    await wsClient.connect();
+    useWebSocket = true;
+  } catch {
+    // Fallback to polling
+  }
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -121,7 +133,10 @@ export async function executeChain(
     }
 
     try {
-      const result = await comfyui.submitPromptAndWait(workflow, timeoutMs);
+      const result = useWebSocket
+        ? await comfyui.submitPromptAndWaitWithProgress(workflow, timeoutMs)
+        : await comfyui.submitPromptAndWait(workflow, timeoutMs);
+
       results.push({
         stepIndex: i,
         prompt_id: result.prompt_id,

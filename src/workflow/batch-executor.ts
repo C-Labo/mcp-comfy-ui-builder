@@ -1,6 +1,6 @@
 /**
  * Batch executor: run multiple workflows with configurable concurrency.
- * Uses submitPromptAndWait (polling) per workflow.
+ * Uses WebSocket for real-time progress (with polling fallback).
  */
 import * as comfyui from '../comfyui-client.js';
 import type { ComfyUIWorkflow, ExecutionResult } from '../types/comfyui-api-types.js';
@@ -33,7 +33,7 @@ export interface BatchResult {
 
 /**
  * Execute workflows in batches. Up to concurrency run at a time.
- * Each workflow is submitted and waited on via submitPromptAndWait.
+ * Pre-connects WebSocket for optimized batch execution (single connection vs multiple polling loops).
  */
 export async function executeBatch(config: BatchConfig): Promise<BatchResult[]> {
   const { workflows, concurrency = 1, stopOnError = false, timeoutMs = 300_000, onProgress } = config;
@@ -42,9 +42,23 @@ export async function executeBatch(config: BatchConfig): Promise<BatchResult[]> 
   const running: Promise<void>[] = [];
   const maxConcurrency = Math.max(1, concurrency);
 
+  // Pre-connect WebSocket for batch execution (reduces overhead from multiple polling loops)
+  let useWebSocket = false;
+  try {
+    const { getWSClient } = await import('../comfyui-ws-client.js');
+    const wsClient = getWSClient();
+    await wsClient.connect();
+    useWebSocket = true;
+  } catch {
+    // Fallback to polling
+  }
+
   async function runOne(item: (typeof queue)[0]): Promise<void> {
     try {
-      const result = await comfyui.submitPromptAndWait(item.workflow, timeoutMs);
+      const result = useWebSocket
+        ? await comfyui.submitPromptAndWaitWithProgress(item.workflow, timeoutMs)
+        : await comfyui.submitPromptAndWait(item.workflow, timeoutMs);
+
       const batchResult: BatchResult = {
         index: item.index,
         prompt_id: result.prompt_id,

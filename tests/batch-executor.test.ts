@@ -8,6 +8,13 @@ vi.mock('../src/comfyui-client.js', () => ({
   submitPromptAndWait: (...args: unknown[]) => mockSubmitPromptAndWait(...args),
 }));
 
+// Mock WebSocket client to force polling fallback
+vi.mock('../src/comfyui-ws-client.js', () => ({
+  getWSClient: () => ({
+    connect: () => Promise.reject(new Error('WebSocket not available in tests')),
+  }),
+}));
+
 describe('executeBatch', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -1,10 +1,6 @@
 /**
- * Plugin loader: load templates/macros (and optionally chains) from plugins/*/plugin.json.
- *
- * Design goals:
- * - Data-only plugins (JSON), no arbitrary code execution.
- * - Focus on macros first (directly usable via list_macros/insert_macro).
- * - Template/chain support can be extended later on top of the same schema.
+ * Plugin loader: load templates and macros from plugins directory.
+ * Data-only plugins (JSON), no code execution.
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -32,7 +28,6 @@ export interface PluginMacroConfig {
 }
 
 export interface PluginTemplateConfig extends Omit<WorkflowTemplate, 'id'> {
-  /** Optional explicit id; if missing, plugin loader will generate one. */
   id?: string;
 }
 
@@ -67,9 +62,6 @@ function safeReadJson(path: string): unknown | null {
   }
 }
 
-/**
- * Convert PluginMacroConfig to internal Macro type, prefixing id with plugin id to avoid collisions.
- */
 function macroFromConfig(pluginId: string, cfg: PluginMacroConfig): Macro {
   const id = `${pluginId}:${cfg.id}`;
   return {
@@ -92,10 +84,6 @@ function macroFromConfig(pluginId: string, cfg: PluginMacroConfig): Macro {
   };
 }
 
-/**
- * Convert PluginTemplateConfig to WorkflowTemplate, prefixing id with plugin id when present.
- * For now we treat plugin templates as data; they can be surfaced via future tools.
- */
 function templateFromConfig(pluginId: string, cfg: PluginTemplateConfig): WorkflowTemplate {
   const id = cfg.id ? `${pluginId}:${cfg.id}` : `${pluginId}:tpl_${Date.now().toString(36)}`;
   return {
@@ -108,9 +96,6 @@ function templateFromConfig(pluginId: string, cfg: PluginTemplateConfig): Workfl
   };
 }
 
-/**
- * Load all plugins from plugins/*/plugin.json.
- */
 export function loadPlugins(): LoadedPlugin[] {
   if (!existsSync(PLUGINS_DIR)) {
     return [];
@@ -186,4 +171,3 @@ export function summarizePlugins(plugins: LoadedPlugin[]): PluginSummary[] {
     templates: p.templates.length,
   }));
 }
-
