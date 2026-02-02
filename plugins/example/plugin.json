@@ -1,0 +1,40 @@
+{
+  "id": "example",
+  "name": "Example macros and templates",
+  "version": "0.1.0",
+  "description": "Example plugin demonstrating how to add macros/templates.",
+  "author": "mcp-comfy-ui-builder",
+  "macros": [
+    {
+      "id": "upscale_simple",
+      "name": "Upscale (plugin example)",
+      "description": "LoadImage → UpscaleModelLoader → ImageUpscaleWithModel → SaveImage",
+      "inputs": [
+        { "name": "image", "type": "IMAGE", "nodeId": "1", "inputName": "image" }
+      ],
+      "outputs": [
+        { "name": "image", "type": "IMAGE", "nodeId": "4", "outputIndex": 0 }
+      ],
+      "nodes": {
+        "1": {
+          "class_type": "LoadImage",
+          "inputs": {}
+        },
+        "2": {
+          "class_type": "UpscaleModelLoader",
+          "inputs": { "model_name": "RealESRGAN_x4plus.pth" }
+        },
+        "3": {
+          "class_type": "ImageUpscaleWithModel",
+          "inputs": { "image": ["1", 0], "upscale_model": ["2", 0] }
+        },
+        "4": {
+          "class_type": "SaveImage",
+          "inputs": { "images": ["3", 0] }
+        }
+      }
+    }
+  ],
+  "templates": []
+}
+

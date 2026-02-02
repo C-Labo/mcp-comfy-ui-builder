@@ -215,4 +215,34 @@ Set **COMFYUI_HOST** (default `http://127.0.0.1:8188`). Then:
 2. **get_execution_status(prompt_id)** — GET history; returns status and image filenames/URLs.
 3. **list_queue** — GET queue (running and pending).
 
+**Sync run (submit and wait):** **execute_workflow_sync(workflow, timeout?)** — submits and polls until done; returns prompt_id and outputs. **get_execution_progress(prompt_id)** — progress while running (e.g. current node). **execute_batch(workflows, concurrency?)** — run multiple workflows.
+
 See [MCP-SETUP.md](MCP-SETUP.md) and [comfyui-api-quick-reference.md](comfyui-api-quick-reference.md).
+
+***
+
+## Outputs (requires ComfyUI)
+
+After execution:
+
+- **list_outputs(prompt_id)** — list output files (images, etc.) for a prompt.
+- **download_output(prompt_id, node_id, filename, dest_path, subfolder?)** — save one file locally.
+- **download_all_outputs(prompt_id, dest_dir, prefix_node_id?)** — save all outputs to a directory.
+
+***
+
+## Chaining (execute_chain)
+
+Run a sequence of workflows where the output of step N is the input of step N+1:
+
+- **execute_chain(steps)** — steps: array of `{ workflow, params?, inputFrom?: { step, outputNode, outputIndex }, outputTo? }`. Use **inputFrom** to take an output from a previous step and **outputTo** to pass it into the next workflow’s input. Requires **COMFYUI_HOST**.
+
+Example: step 1 txt2img → step 2 upscale (image from step 1) → step 3 img2img (image from step 2).
+
+***
+
+## Models (requires ComfyUI)
+
+- **get_workflow_models(workflow)** — list models required by a workflow (checkpoint, lora, vae, controlnet, upscale, etc.).
+- **check_workflow_models(workflow)** — check which of those models are missing on the server.
+- **list_models(model_type?)** — list available models by type. **get_model_info(name, model_type)**, **check_model_exists(name, model_type)** — single-model info/check.

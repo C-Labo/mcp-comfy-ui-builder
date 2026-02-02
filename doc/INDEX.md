@@ -10,12 +10,13 @@
 |------|----------|
 | Quick launch, commands at hand | [QUICK-REFERENCE.md](QUICK-REFERENCE.md) |
 | Complete start, seed + MCP | [GETTING-STARTED.md](GETTING-STARTED.md) |
-| Connect MCP (Cursor / Claude Desktop) | [MCP-SETUP.md](MCP-SETUP.md) |
+| Connect MCP (Cursor / Claude Desktop); full MCP tool list by area | [MCP-SETUP.md](MCP-SETUP.md) |
 | Workflow Builder — templates, save/load, execute | [workflow-builder.md](workflow-builder.md) |
 | AI assistant guide — how to use the package (e.g. after npm i -g) | [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md) |
 | Generate and verify (image → caption, check result) | [GENERATE-AND-VERIFY.md](GENERATE-AND-VERIFY.md) |
 | Install custom nodes and models (LoRA, checkpoints, VAE) | [INSTALL-NODES-AND-MODELS.md](INSTALL-NODES-AND-MODELS.md) |
 | ComfyUI API, knowledge base in code | [comfyui-api-quick-reference.md](comfyui-api-quick-reference.md), [comfyui-api-detailed-guide.md](comfyui-api-detailed-guide.md), [knowledge-base-usage-guide.md](knowledge-base-usage-guide.md) |
+| Plugins — extend templates/macros via JSON | [PLUGINS.md](PLUGINS.md) |
 
 ---
 
@@ -33,6 +34,7 @@
 | [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md) | AI assistant guide (npm i -g) |
 | [GENERATE-AND-VERIFY.md](GENERATE-AND-VERIFY.md) | Generate and verify workflow |
 | [INSTALL-NODES-AND-MODELS.md](INSTALL-NODES-AND-MODELS.md) | Install custom nodes and models via MCP |
+| [PLUGINS.md](PLUGINS.md) | Data-only plugins (templates/macros) and related MCP tools |
 
 ### Reference
 
@@ -61,3 +63,5 @@
 - **How to add a node?** Run `npm run seed` to fill from seed. Manually: add to base-nodes.json (see knowledge/README.md).
 - **How to connect MCP?** → [MCP-SETUP.md](MCP-SETUP.md).
 - **Where is knowledge base?** At project root: `knowledge/` folder.
+- **Full list of MCP tools?** → [MCP-SETUP.md](MCP-SETUP.md) (grouped by area: knowledge, dynamic builder, execution, outputs, models, queue, etc.).
+ - **How to add your own macros/templates?** → [PLUGINS.md](PLUGINS.md) (plugins/*/plugin.json).

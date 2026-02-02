@@ -6,7 +6,7 @@
 
 ## What it is
 
-**mcp-comfy-ui-builder** is an MCP server for ComfyUI: it lets you discover nodes, build workflows (txt2img), save/load them, and run them on ComfyUI. The user may have installed the package globally: `npm i -g mcp-comfy-ui-builder`.
+**mcp-comfy-ui-builder** is an MCP server for ComfyUI: it lets you discover nodes, build workflows (templates or dynamic), save/load them, run them on ComfyUI, and manage outputs and models. The user may have installed the package globally: `npm i -g mcp-comfy-ui-builder`. Full tool list by area: [MCP-SETUP.md](MCP-SETUP.md).
 
 ---
 
@@ -55,7 +55,17 @@
 | **clear_queue** | Clear the queue (all pending and running) | Yes |
 | **delete_queue_items** | Remove items from queue by prompt_id (list) | Yes |
 
-For **execute_workflow**, **get_execution_status**, **list_queue**, **interrupt_execution**, **clear_queue**, **delete_queue_items**, **COMFYUI_HOST** must be set (default `http://127.0.0.1:8188`) and ComfyUI must be running. The rest of the tools work without ComfyUI.
+**More tools (v0.3, ComfyUI needed where noted):**  
+**Dynamic workflow:** create_workflow, add_node, connect_nodes, remove_node, set_node_input, get_workflow_json, validate_workflow, finalize_workflow (no ComfyUI).  
+**Node discovery:** discover_nodes_live, search_nodes, get_node_inputs, get_node_outputs, list_node_categories, sync_nodes_to_knowledge (discover/sync need ComfyUI).  
+**Execution:** execute_workflow_sync (submit and wait), get_execution_progress, execute_batch, execute_chain (Yes).  
+**Outputs:** list_outputs, download_output, download_all_outputs (Yes).  
+**Models:** list_models, get_model_info, check_model_exists, get_workflow_models, check_workflow_models (Yes).  
+**Templates/macros:** create_template, apply_template, validate_template_params, list_macros, insert_macro (no ComfyUI for create/apply/list/insert).  
+**Plugins:** list_plugins, reload_plugins (manage macros/templates from `plugins/*/plugin.json`).  
+**Utility:** prepare_image_for_workflow (copy image into ComfyUI input folder; ComfyUI path needed if different from default).
+
+For any tool that needs ComfyUI, **COMFYUI_HOST** must be set (default `http://127.0.0.1:8188`) and ComfyUI must be running. The rest work without ComfyUI.
 
 ---
 
@@ -82,6 +92,22 @@ For **execute_workflow**, **get_execution_status**, **list_queue**, **interrupt_
 - `interrupt_execution()` or `interrupt_execution(prompt_id)` — stop current run (or a specific one by prompt_id).
 - `clear_queue()` — clear the whole queue.
 - `delete_queue_items(prompt_ids)` — remove specific prompt_ids from the queue (from list_queue).
+
+**Run and wait for result (no polling):**
+1. `execute_workflow_sync(workflow, timeout?)` — submit and wait until done; returns prompt_id and outputs.
+2. Optionally `list_outputs(prompt_id)` then `download_output` / `download_all_outputs` to save files locally.
+
+**Chain workflows (e.g. txt2img → upscale → img2img):**
+1. `execute_chain(steps)` — steps: array of `{ workflow, params?, inputFrom?: { step, outputNode, outputIndex }, outputTo? }`; output of step N is passed as input to step N+1 when specified.
+
+**Check models before run:**
+- `get_workflow_models(workflow)` — which models the workflow needs.
+- `check_workflow_models(workflow)` — which of those are missing (requires COMFYUI_HOST/ComfyUI).
+
+**Work with plugin macros:**
+- `list_plugins` — see which plugins are loaded and how many macros/templates each adds.
+- `list_macros` — builtin + plugin macros; plugin ids are prefixed, e.g. `example:upscale_simple`.
+- `insert_macro(workflow_id, "example:upscale_simple", { image: "input.png" })` — insert plugin macro into a dynamic workflow.
 
 ---
 

@@ -67,6 +67,23 @@ export const BUILTIN_MACROS: Record<string, Macro> = {
   },
 };
 
+const PLUGIN_MACROS: Record<string, Macro> = {};
+
+function getAllMacros(): Record<string, Macro> {
+  return { ...BUILTIN_MACROS, ...PLUGIN_MACROS };
+}
+
+export function registerPluginMacros(macros: Macro[]): void {
+  // Replace all plugin macros with the provided set.
+  for (const key of Object.keys(PLUGIN_MACROS)) {
+    delete PLUGIN_MACROS[key];
+  }
+  for (const macro of macros) {
+    if (!macro.id) continue;
+    PLUGIN_MACROS[macro.id] = macro;
+  }
+}
+
 function isLink(value: InputConnectionValue): value is [string, number] {
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string' && typeof value[1] === 'number';
 }
@@ -187,9 +204,10 @@ export function createMacroFromSelection(
 }
 
 export function listMacros(): Macro[] {
-  return Object.values(BUILTIN_MACROS);
+  return Object.values(getAllMacros());
 }
 
 export function getMacro(id: string): Macro | null {
-  return BUILTIN_MACROS[id] ?? null;
+  const all = getAllMacros();
+  return all[id] ?? null;
 }

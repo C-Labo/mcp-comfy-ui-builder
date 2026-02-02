@@ -100,6 +100,13 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 |------|------|
 | **prepare_image_for_workflow(image_path, dest_name?)** | Copy image into ComfyUI input folder; returns filename for workflow |
 
+### Plugins (no ComfyUI)
+
+| Tool | Description |
+|------|------|
+| **list_plugins** | List loaded plugins from `plugins/*/plugin.json` (id, name, version, macros/templates counts) |
+| **reload_plugins** | Reload plugins from `plugins/*/plugin.json` and refresh macro registry |
+
 ### Install (COMFYUI_PATH)
 
 | Tool | Description |
@@ -107,7 +114,7 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 | **install_custom_node(node_names, channel?, mode?)** | Install custom node packs via ComfyUI-Manager cm-cli |
 | **install_model(url, model_type?)** | Download model/LoRA/VAE by URL to ComfyUI models folder |
 
-Data is loaded from `knowledge/base-nodes.json` and `knowledge/node-compatibility.json` at server startup. See [workflow-builder.md](workflow-builder.md) for templates and workflow format.
+Data is loaded from `knowledge/base-nodes.json` and `knowledge/node-compatibility.json` at server startup. See [workflow-builder.md](workflow-builder.md) for templates and workflow format and [PLUGINS.md](PLUGINS.md) for plugin structure.
 
 ***
 

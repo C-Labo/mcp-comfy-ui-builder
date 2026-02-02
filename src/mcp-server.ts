@@ -37,13 +37,10 @@ import {
   type WorkflowTemplate,
   type ParameterDefinition,
 } from './workflow/workflow-template.js';
-import {
-  listMacros,
-  getMacro,
-  insertMacro as insertMacroIntoContext,
-} from './workflow/macro.js';
+import { listMacros, getMacro, insertMacro as insertMacroIntoContext, registerPluginMacros } from './workflow/macro.js';
 import { executeChain } from './workflow/chainer.js';
 import type { ComfyUIWorkflow } from './types/comfyui-api-types.js';
+import { loadPlugins, summarizePlugins, type LoadedPlugin } from './plugins/plugin-loader.js';
 
 const KNOWLEDGE_DIR = join(process.cwd(), 'knowledge');
 const BASE_NODES_PATH = join(KNOWLEDGE_DIR, 'base-nodes.json');
@@ -121,10 +118,22 @@ function validateWorkflow(workflow: ComfyUIWorkflow): { valid: boolean; errors: 
   return { valid: errors.length === 0, errors };
 }
 
+// Plugins (templates/macros from plugins/*/plugin.json)
+let loadedPlugins: LoadedPlugin[] = [];
+
+function initPlugins(): void {
+  loadedPlugins = loadPlugins();
+  const allPluginMacros = loadedPlugins.flatMap((p) => p.macros);
+  registerPluginMacros(allPluginMacros);
+}
+
 const server = new McpServer(
   { name: 'mcp-comfy-ui-builder', version: '0.1.0' },
   { capabilities: { tools: {} } }
 );
+
+// Load plugins at startup (safe no-op if plugins/ is absent)
+initPlugins();
 
 server.registerTool(
   'list_node_types',
@@ -1257,6 +1266,42 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `execute_chain failed: ${msg}` }] };
+    }
+  }
+);
+
+// --- Plugin Management (Phase 7) ---
+
+server.registerTool(
+  'list_plugins',
+  {
+    description:
+      'List loaded plugins (from plugins/*/plugin.json) and counts of macros/templates contributed by each.',
+    inputSchema: {},
+  },
+  () => {
+    const summary = summarizePlugins(loadedPlugins);
+    const text = summary.length ? JSON.stringify(summary, null, 2) : 'No plugins loaded (plugins/ directory is empty or missing).';
+    return { content: [{ type: 'text', text }] };
+  }
+);
+
+server.registerTool(
+  'reload_plugins',
+  {
+    description: 'Reload plugins from plugins/*/plugin.json and refresh macro registry.',
+    inputSchema: {},
+  },
+  () => {
+    try {
+      initPlugins();
+      const summary = summarizePlugins(loadedPlugins);
+      const header = `Reloaded plugins: ${summary.length}`;
+      const details = summary.length ? `\n${JSON.stringify(summary, null, 2)}` : '';
+      return { content: [{ type: 'text', text: header + details }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `reload_plugins failed: ${msg}` }] };
     }
   }
 );

@@ -103,7 +103,7 @@ IMPROVEMENT-PLAN Phase 6       [████████████████
 ### Milestone 3: v0.3.0 (IMPROVEMENT-PLAN Phase 1)
 - More templates: inpainting, upscaling, LoRA, ControlNet, batch.
 
-### Milestone 4: v0.4.0+ (IMPROVEMENT-PLAN Phases 2–6)
+### Milestone 4: v0.4.0+ (IMPROVEMENT-PLAN Phases 2–7)
 - Dynamic workflow builder, hybrid discovery, WebSocket execution, model manager, workflow composition.
 
 ---

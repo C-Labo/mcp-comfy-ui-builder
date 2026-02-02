@@ -578,6 +578,69 @@ Step 3: img2img (input = output step 2, denoise=0.3) → покращує дет
 
 ---
 
+## Фаза 7: Docker та Plugin System
+
+### 7.1 Docker образи
+
+**Мета:** зробити розгортання MCP-сервера (і за бажанням Web UI) повторюваним, без ручних налаштувань Node/COMFYUI_HOST.
+
+**Варіанти:**
+- **Variant A — MCP-only image:**
+  - Окремий контейнер з Node + `mcp-comfy-ui-builder` (без ComfyUI).
+  - Підключення до окремого контейнера з ComfyUI через `COMFYUI_HOST` (наприклад, `http://comfyui:8188`).
+- **Variant B — MCP + Web UI:**
+  - Multi-stage build: спочатку build `web/`, далі Node-образ, який роздає статичний UI (наприклад, через `serve` або невеликий Express).
+
+**Файли:**
+- `Dockerfile` — базовий образ (Node 20+, dist/mcp-server.js, entrypoint для MCP).
+- `Dockerfile.web` або multi-stage у тому ж файлі — збирання `web/`.
+- `docker-compose.example.yml`:
+  - сервіс `comfyui` (офіційний/існуючий образ ComfyUI),
+  - сервіс `mcp-comfy-ui-builder` (цей проект),
+  - опційно сервіс `web` (Workflow Studio),
+  - спільні volume для моделей/виводу.
+
+**Налаштування:**
+- Env vars у `docker-compose.example.yml`:
+  - `COMFYUI_HOST=http://comfyui:8188`,
+  - `COMFYUI_PATH=/data/comfyui` (volume з моделями),
+  - `NODE_ENV=production`.
+- Документація в `doc/GETTING-STARTED.md` / окремому `doc/DOCKER-SETUP.md`:
+  - як підняти стек `docker compose up`,
+  - як опублікувати свій образ на Docker Hub / GHCR.
+
+### 7.2 Plugin System (templates/macros/tools)
+
+**Мета:** дозволити користувачам додавати свої пакети (templates, macros, chains, presets) без форку репозиторію.
+
+**Формат плагіна:**
+- Каталог у `plugins/<plugin-id>/` з файлом `plugin.json`:
+  - `id`, `name`, `version`, `author`,
+  - `templates`: масив описів templates (id, description, parameters, workflow JSON або посилання на saved workflow),
+  - `macros`: масив описів macros (ports + внутрішній workflow),
+  - опційно `chains`: опис стандартних ланцюжків (маски для execute_chain).
+
+**Loader:**
+- **Новий файл:** `src/plugins/plugin-loader.ts`
+  - знаходить усі `plugins/*/plugin.json`,
+  - валідовує схему,
+  - будує runtime registry:
+    - extra templates → додаються до `workflow-template.ts`,
+    - extra macros → додаються до `macro.ts`,
+    - extra chains/presets → доступні в `chainer.ts`.
+- Ініціалізація в `src/mcp-server.ts`:
+  - при старті server читає plugins і реєструє їх у відповідних модулях.
+
+**Нові/розширені MCP інструменти:**
+- `list_plugins` — список встановлених плагінів (id, name, версія, джерело).
+- `reload_plugins` — перезавантажити registry без перезапуску сервера (best-effort).
+- `list_templates` / `list_macros` — вже повертають **core + plugin** entries (позначати джерело у метаданих).
+
+**Безпека та обмеження:**
+- Плагіни описуються **даними** (JSON), без довільного виконуваного коду.
+- Workflow JSON з плагінів проходять ті ж перевірки, що й звичайні (validate_workflow, check_workflow_models).
+- Встановлення плагінів описується окремо (manual: скопіювати каталог; окремий MCP tool для завантаження з GitHub — опційно, поза межами поточної фази).
+
 ## Зведена таблиця змін
 
 ### Файли для модифікації
@@ -589,6 +652,10 @@ Step 3: img2img (input = output step 2, denoise=0.3) → покращує дет
 | `src/comfyui-client.ts` | 3, 4 | +getObjectInfo, WebSocket |
 | `knowledge/base-nodes.json` | 1, 3 | +ноди |
 | `src/types/node-types.ts` | 2, 3 | +типи |
+| `src/workflow/workflow-template.ts`, `src/workflow/macro.ts`, `src/workflow/chainer.ts` | 6-7 | Підтримка plugin-templates/macros/chains |
+| `src/plugins/plugin-loader.ts` | 7 | Loader plugins (templates/macros/chains) |
+| `src/mcp-server.ts` | 7 | +list_plugins, reload_plugins, інтеграція plugin registry |
+| `doc/GETTING-STARTED.md`, `doc/MCP-SETUP.md`, `doc/workflow-builder.md`, `doc/AI-ASSISTANT-GUIDE.md` | 1-7 | Оновлення під нові шаблони, інструменти, Docker, plugins |
 
 ### Нові файли
 
@@ -604,6 +671,9 @@ Step 3: img2img (input = output step 2, denoise=0.3) → покращує дет
 | `src/workflow/workflow-template.ts` | 6 | Templates |
 | `src/workflow/macro.ts` | 6 | Macros |
 | `src/workflow/chainer.ts` | 6 | Chaining |
+| `src/plugins/plugin-loader.ts` | 7 | Завантаження плагінів (templates/macros/chains) |
+| `plugins/example/` | 7 | Приклад плагіна (plugin.json + workflows) |
+| `Dockerfile`, `docker-compose.example.yml` | 7 | Docker образи та приклад стеку |
 
 ---
 
@@ -624,6 +694,9 @@ Step 3: img2img (input = output step 2, denoise=0.3) → покращує дет
     │
     ▼
 Фаза 6 ──────────────────────► Після Фаз 2, 4, 5
+    │
+    ▼
+Фаза 7 ──────────────────────► Залежить від 1–6 (Docker та plugins поверх існуючого API)
 ```
 
 ---
