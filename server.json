@@ -2,17 +2,17 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.MIt9/comfy-ui-builder",
   "title": "ComfyUI Builder",
-  "description": "MCP server for ComfyUI: knowledge base (62+ nodes), 50+ tools for workflow building, real-time execution (WebSocket), batch/chain, model management. For Cursor and Claude.",
+  "description": "ComfyUI MCP server: knowledge base, workflow builder, real-time execution, models, plugins.",
   "repository": {
     "url": "https://github.com/MIt9/mcp-comfy-ui-builder",
     "source": "github"
   },
-  "version": "1.1.4",
+  "version": "1.1.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "mcp-comfy-ui-builder",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "transport": {
         "type": "stdio"
       },

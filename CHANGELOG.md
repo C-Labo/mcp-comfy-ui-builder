@@ -8,7 +8,7 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
-## [1.1.4] – 2026-02-03
+## [1.1.5] – 2026-02-03
 
 ### Added
 

@@ -9,6 +9,9 @@ dist/
 .env
 .env.local
 .env.*.local
+.mcpregistry_github_token
+.mcpregistry_registry_token
+.mcpregistry_*
 
 # IDE / OS
 .idea/
@@ -24,5 +27,3 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
-# Publish script (local use)
-scripts/publish.sh
