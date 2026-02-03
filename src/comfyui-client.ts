@@ -384,22 +384,36 @@ export async function submitPromptAndWaitWithProgress(
 }
 
 /**
- * Wait for execution completion (WebSocket if available, else polling).
- * Use after submitPrompt() when you already have prompt_id. Exported for MCP handler so prompt_id can be returned on wait failure.
+ * Wait for execution completion (WebSocket + polling in parallel).
+ * Runs both WebSocket and polling from the start; first to return completed/failed wins.
+ * Handles MPS/macOS where WebSocket may not receive progress events — polling resolves via GET /history.
  */
 export async function waitForCompletion(
   promptId: string,
   timeoutMs: number = DEFAULT_SYNC_TIMEOUT_MS,
   onProgress?: (progress: import('./types/comfyui-api-types.js').ExecutionProgress) => void
 ): Promise<ExecutionResult> {
-  try {
-    const { getWSClient } = await import('./comfyui-ws-client.js');
-    const wsClient = getWSClient();
-    await wsClient.connect();
-    return await waitWithWebSocket(wsClient, promptId, timeoutMs, onProgress);
-  } catch {
-    return await waitWithPolling(promptId, timeoutMs);
-  }
+  const wsPromise = (async (): Promise<ExecutionResult | null> => {
+    try {
+      const { getWSClient } = await import('./comfyui-ws-client.js');
+      const wsClient = getWSClient();
+      await wsClient.connect();
+      return await waitWithWebSocket(wsClient, promptId, timeoutMs, onProgress);
+    } catch {
+      return null;
+    }
+  })();
+
+  const pollPromise = waitWithPolling(promptId, timeoutMs);
+
+  const result = await Promise.race([
+    wsPromise.then((r) =>
+      r && (r.status === 'completed' || r.status === 'failed') ? r : pollPromise
+    ),
+    pollPromise,
+  ]);
+
+  return result;
 }
 
 /**

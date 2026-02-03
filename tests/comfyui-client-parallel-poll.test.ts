@@ -1,40 +1,24 @@
 /**
- * Unit tests for WebSocket + parallel polling (MPS/macOS where WS may not receive events).
- * Tests execute_workflow_sync resolving with completed via polling when WS times out or gives no progress.
+ * Test: polling wins when WebSocket connects but receives no progress events (MPS scenario).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ComfyUIWorkflow } from '../src/types/comfyui-api-types.js';
 
 const mockFetch = vi.fn();
 
-// Mock node-fetch
 vi.mock('node-fetch', () => ({ default: mockFetch }));
 
-// Mock WebSocket: emits 100% progress but never completed (one MPS scenario)
-const createWSMockWith100Percent = () => ({
-  connect: () => Promise.resolve(),
-  subscribe: (promptId: string, onProgress: (p: unknown) => void) => {
-    queueMicrotask(() => {
-      onProgress({
-        prompt_id: promptId,
-        status: 'executing',
-        current_node_progress: 1,
-        completed_nodes: [],
-        cached_nodes: [],
-        outputs: {},
-      });
-    });
-    return { unsubscribe: () => {} };
-  },
-  isConnected: () => true,
-});
-
+// WS connects but never emits progress — would eventually timeout
 vi.mock('../src/comfyui-ws-client.js', () => ({
-  getWSClient: () => createWSMockWith100Percent(),
+  getWSClient: () => ({
+    connect: () => Promise.resolve(),
+    subscribe: () => ({ unsubscribe: () => {} }),
+    isConnected: () => true,
+  }),
   resetWSClient: () => {},
 }));
 
-describe('ComfyUI client — WebSocket + parallel polling', () => {
+describe('ComfyUI client — parallel polling when WS has no events', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.COMFYUI_HOST;
@@ -43,8 +27,8 @@ describe('ComfyUI client — WebSocket + parallel polling', () => {
     delete process.env.COMFYUI_HOST;
   });
 
-  it('resolves with completed when WS shows 100% but no completed event (poll or 100% fallback wins)', async () => {
-    const promptId = 'p-fallback-test';
+  it('polling resolves with completed when WS never sends progress events', async () => {
+    const promptId = 'p-no-ws-events';
     const completedOutputs = {
       '7': { images: [{ filename: 'out.png', subfolder: 'output', type: 'output' }] },
     };
@@ -76,7 +60,6 @@ describe('ComfyUI client — WebSocket + parallel polling', () => {
     expect(result.status).toBe('completed');
     expect(result.outputs).toEqual(completedOutputs);
 
-    // Polling runs in parallel; verify GET /history was called
     const historyCalls = mockFetch.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes('/history')
     );

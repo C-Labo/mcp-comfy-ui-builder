@@ -8,6 +8,18 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.1.4] – 2026-02-03
+
+### Fixed (Bug_Report_2 — залишок)
+
+- **execute_workflow_sync timeout коли WebSocket не отримує progress events:** У v2.1.3 fallback спрацьовував лише при `current_node_progress >= 100%`. Якщо на MPS ComfyUI взагалі не шле events (лише `[queued] waiting`), condition ніколи не true. Рішення — паралельний polling: `waitForCompletion` тепер запускає WebSocket і polling одночасно; перший що поверне `completed` або `failed` — виграє. [src/comfyui-client.ts](src/comfyui-client.ts) — `waitForCompletion()`.
+
+### Tests
+
+- **comfyui-client-parallel-poll.test.ts:** Новий тест — WS підключається але ніколи не відправляє progress; перевіряє що polling резолвить з `status: 'completed'`. [tests/comfyui-client-parallel-poll.test.ts](tests/comfyui-client-parallel-poll.test.ts).
+
+---
+
 ## [2.1.3] – 2026-02-03
 
 ### Fixed (Bug_Report_2)
