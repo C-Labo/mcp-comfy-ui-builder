@@ -1,7 +1,8 @@
 {
   "name": "mcp-comfy-ui-builder",
-  "version": "1.1.3",
-  "description": "ComfyUI Node Discovery: seed knowledge base, MCP tools for Cursor/Claude",
+  "version": "1.1.4",
+  "description": "MCP server for ComfyUI: seed knowledge base (62+ nodes), 50+ tools for workflow building, real-time execution (WebSocket), batch/chain, model management. For Cursor and Claude.",
+  "mcpName": "io.github.MIt9/comfy-ui-builder",
   "type": "module",
   "main": "dist/cli.js",
   "scripts": {
@@ -20,9 +21,14 @@
   "keywords": [
     "comfyui",
     "mcp",
-    "node-discovery",
+    "model-context-protocol",
     "cursor",
-    "claude"
+    "claude",
+    "workflow",
+    "node-discovery",
+    "image-generation",
+    "stable-diffusion",
+    "ai"
   ],
   "author": "MIt9",
   "license": "MIT",

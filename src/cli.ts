@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * CLI — seed, sync-manager, sync-nodes, MCP. Knowledge base filled from seed (no ComfyUI or API).
+ * CLI — seed, sync-manager, sync-nodes, reload-comfyui, MCP. Knowledge base filled from seed (no ComfyUI or API).
  */
 import { program } from 'commander';
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -9,6 +9,7 @@ import { fetchManagerList, type ManagerListResult } from './node-discovery/scann
 import { updateCompatibility } from './node-discovery/updater.js';
 import { HybridNodeDiscovery } from './node-discovery/hybrid-discovery.js';
 import { getObjectInfo } from './comfyui-client.js';
+import { restartComfyUIAsync, getComfyPath } from './manager-cli.js';
 import { logger } from './logger.js';
 import type { CustomPack, CustomNodesJson, BaseNodesJson, NodeDescription } from './types/node-types.js';
 
@@ -184,6 +185,55 @@ program
     } else {
       const ok = await runSync();
       process.exit(ok ? 0 : 1);
+    }
+  });
+
+program
+  .command('reload-comfyui')
+  .description(
+    'Restart ComfyUI so custom nodes are reloaded. Requires COMFYUI_PATH. Uses COMFYUI_HOST for port. Optionally sync nodes to knowledge base after restart.'
+  )
+  .option('--no-wait', 'Do not wait for ComfyUI to become ready')
+  .option('--no-sync', 'Do not run sync-nodes after restart')
+  .option('--wait-timeout <ms>', 'Max ms to wait for ComfyUI ready', '120000')
+  .action(async (opts: { wait?: boolean; sync?: boolean; waitTimeout?: string }) => {
+    if (!getComfyPath()) {
+      logger.error('cli', 'COMFYUI_PATH is not set. Set it to your ComfyUI installation directory.');
+      process.exit(1);
+    }
+    const waitForReady = opts.wait !== false;
+    const syncAfterRestart = opts.sync !== false;
+    const waitTimeoutMs = parseInt(opts.waitTimeout ?? '120000', 10) || 120_000;
+    try {
+      logger.info('cli', 'Restarting ComfyUI...');
+      const result = await restartComfyUIAsync({ waitForReady, waitTimeoutMs });
+      if (!result.ok) {
+        logger.error('cli', result.message);
+        process.exit(1);
+      }
+      logger.info('cli', result.message);
+      if (syncAfterRestart && result.ready) {
+        const loadBaseNodes = (): BaseNodesJson => {
+          const path = baseNodesPath();
+          if (!existsSync(path)) return { metadata: {}, nodes: {} };
+          return JSON.parse(readFileSync(path, 'utf8')) as BaseNodesJson;
+        };
+        const discovery = new HybridNodeDiscovery({ getObjectInfo, loadBaseNodes });
+        const syncResult = await discovery.syncToKnowledgeBase();
+        if (syncResult.added.length > 0) {
+          logger.info('cli', `sync-nodes: added ${syncResult.added.length} nodes: ${syncResult.added.slice(0, 10).join(', ')}${syncResult.added.length > 10 ? '...' : ''}`);
+        }
+        if (syncResult.skipped > 0) {
+          logger.info('cli', `sync-nodes: ${syncResult.skipped} nodes already in knowledge base`);
+        }
+        if (syncResult.errors.length > 0) {
+          for (const err of syncResult.errors) logger.error('cli', `sync-nodes: ${err}`);
+        }
+      }
+      process.exit(0);
+    } catch (e) {
+      logger.error('cli', 'reload-comfyui failed.', e);
+      process.exit(1);
     }
   });
 

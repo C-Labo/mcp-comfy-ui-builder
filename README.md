@@ -1,37 +1,40 @@
 # mcp-comfy-ui-builder
 
+<img src="assets/icon.svg" width="48" height="48" alt="" align="left" />
+
 [![CI](https://github.com/MIt9/mcp-comfy-ui-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/MIt9/mcp-comfy-ui-builder/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/mcp-comfy-ui-builder.svg)](https://www.npmjs.com/package/mcp-comfy-ui-builder)
 [![Docker](https://img.shields.io/docker/v/siniidrozd/mcp-comfy-ui-builder?label=docker)](https://hub.docker.com/r/siniidrozd/mcp-comfy-ui-builder)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**ComfyUI Node Discovery** — seed knowledge base and MCP tools for Cursor/Claude.
+**ComfyUI Node Discovery** — seed knowledge base and MCP tools for Cursor/Claude.  
+Publishable to the [MCP Registry](https://modelcontextprotocol.io/registry/about) via `server.json` and `mcpName`.
 
 ## What is this
 
-- Seed `knowledge/base-nodes.json` and `node-compatibility.json` from bundled seed (no external services)
-- Sync custom packs list from ComfyUI-Manager; sync nodes from running ComfyUI (`sync-nodes` CLI or on MCP startup)
-- MCP server with 50+ tools: node discovery, dynamic workflow builder, template system, **WebSocket real-time execution** (v0.5.0+), batch/chain execution, model management, plugin system
-- **Real-time progress tracking:** Sub-second updates via WebSocket with automatic polling fallback
-- **90% reduced network traffic** for batch execution with shared WebSocket connection
+- **Knowledge base:** Seed `knowledge/base-nodes.json` and `node-compatibility.json` from bundled data (62 seed nodes; 100–600+ after sync). No external services required for suggest/build.
+- **Sync:** Custom packs from ComfyUI-Manager; nodes from running ComfyUI via `sync-nodes` CLI or on MCP startup.
+- **MCP server (50+ tools):** Node discovery, dynamic workflow builder, 8 templates, WebSocket real-time execution, batch/chain, model management, plugin system.
+- **Real-time execution:** Sub-second progress via WebSocket with automatic polling fallback; ~90% less network traffic for batch runs.
+
+## Install
+
+```bash
+npm install mcp-comfy-ui-builder
+```
+
+Or from source: `git clone https://github.com/MIt9/mcp-comfy-ui-builder.git && cd mcp-comfy-ui-builder && npm install`
 
 ## Quick start
 
-1. **Clone and install**
-
-   ```bash
-   git clone https://github.com/MIt9/mcp-comfy-ui-builder.git && cd mcp-comfy-ui-builder
-   npm install
-   ```
-
-2. **Build** (postbuild fills knowledge from seed)
+1. **Build** (postbuild fills knowledge from seed)
 
    ```bash
    npm run build
    npm run mcp
    ```
 
-3. **Use knowledge in code**
+2. **Use knowledge in code**
 
    ```ts
    import baseNodes from './knowledge/base-nodes.json' assert { type: 'json' };
@@ -56,11 +59,12 @@ Single entry point — **task-oriented navigation**:
 - **[doc/QUICK-REFERENCE.md](doc/QUICK-REFERENCE.md)** — commands, examples, troubleshooting
 - **[doc/GETTING-STARTED.md](doc/GETTING-STARTED.md)** — quick start
 - **[doc/MCP-SETUP.md](doc/MCP-SETUP.md)** — connect MCP in Cursor/Claude
-- **[doc/DOCKER-SETUP.md](doc/DOCKER-SETUP.md)** — `docker pull siniidrozd/mcp-comfy-ui-builder:0.5.0` | docker-compose for MCP + ComfyUI
+- **[doc/DOCKER-SETUP.md](doc/DOCKER-SETUP.md)** — `docker pull siniidrozd/mcp-comfy-ui-builder` | docker-compose for MCP + ComfyUI
 - **Knowledge base:** [knowledge/README.md](knowledge/README.md), [doc/knowledge-base-usage-guide.md](doc/knowledge-base-usage-guide.md)
 - **Workflow Builder:** [doc/workflow-builder.md](doc/workflow-builder.md) — templates, params, save/load, ComfyUI format
-- **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md)
+- **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md) — current v1.1.x, next Phase 10 (QoL)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
+- **MCP Registry:** [server.json](server.json) and `mcpName` in package.json; see [MCP Registry quickstart](https://modelcontextprotocol.io/registry/quickstart) to publish after `npm publish`.
 
 ## Requirements
 
@@ -85,7 +89,7 @@ Server provides 50+ tools across 9 categories:
 - **create_template**, **apply_template** — Parameterized templates
 - **list_macros**, **insert_macro** — Reusable sub-workflows
 
-**Real-Time Execution (v0.5.0+) 📡:**
+**Real-time execution 📡**
 - **execute_workflow_sync** — Execute with **WebSocket progress streaming** (sub-second updates)
 - **execute_workflow_stream** — Full event history collection (WebSocket-only)
 - **get_execution_progress** — Real-time progress with node-level granularity
@@ -106,7 +110,7 @@ Server provides 50+ tools across 9 categories:
 **Install (requires COMFYUI_PATH):**
 - **install_custom_node**, **install_model** — Install nodes and models via ComfyUI-Manager
 
-### WebSocket Features (v0.5.0+)
+### WebSocket features
 
 - **<100ms latency** for progress updates (vs 1.5s polling)
 - **Node-level tracking:** See exactly which node is executing with progress percentage

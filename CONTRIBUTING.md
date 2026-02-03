@@ -30,6 +30,12 @@ npm install
 - [doc/QUICK-REFERENCE.md](doc/QUICK-REFERENCE.md) — commands and examples
 - [ROADMAP.md](ROADMAP.md) — planned features
 
+## Distribution (maintainers)
+
+- **npm:** `npm publish` (after `npm run build`). Package has `mcpName` and `server.json` for MCP Registry.
+- **MCP Registry:** To list the server in the [MCP Registry](https://modelcontextprotocol.io/registry/about), install [mcp-publisher](https://modelcontextprotocol.io/registry/quickstart), run `mcp-publisher login github`, then `mcp-publisher publish` after releasing a version. Keep `server.json` version in sync with `package.json`.
+- **GitHub:** Consider adding repo topics: `mcp`, `comfyui`, `cursor`, `claude`, `workflow`, `image-generation`, `model-context-protocol` (Settings → General → Topics).
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.

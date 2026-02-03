@@ -1,6 +1,6 @@
 /**
  * MCP server: list_node_types, get_node_info, check_compatibility, suggest_nodes;
- * discover_nodes_live, search_nodes, get_node_inputs, get_node_outputs, list_node_categories, sync_nodes_to_knowledge (Node Discovery);
+ * discover_nodes_live, search_nodes, get_node_inputs, get_node_outputs, list_node_categories, sync_nodes_to_knowledge, reload_comfyui (Node Discovery);
  * list_templates, build_workflow, save_workflow, list_saved_workflows, load_workflow;
  * create_workflow, add_node, connect_nodes, remove_node, set_node_input, get_workflow_json, validate_workflow, finalize_workflow (dynamic workflow);
  * execute_workflow, get_execution_status, list_queue, interrupt_execution, clear_queue, delete_queue_items (require COMFYUI_HOST for execution/queue tools);
@@ -1430,6 +1430,67 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `reload_plugins failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'reload_comfyui',
+  {
+    description:
+      'Restart ComfyUI so that newly installed custom nodes are loaded, then optionally sync them to the knowledge base. Requires COMFYUI_PATH (ComfyUI installation directory) and uses COMFYUI_HOST for the port. Kills the process on the ComfyUI port and starts main.py from COMFYUI_PATH. After restart, call sync_nodes_to_knowledge to pick up custom nodes (or set sync_after_restart to true).',
+    inputSchema: {
+      wait_for_ready: z.boolean().optional().describe('Wait for ComfyUI to respond before returning. Default true.'),
+      sync_after_restart: z.boolean().optional().describe('After restart, run sync_nodes_to_knowledge to update the knowledge base with custom nodes. Default true when wait_for_ready is true.'),
+      wait_timeout_ms: z.number().optional().describe('Max ms to wait for ComfyUI ready. Default 120000.'),
+    },
+  },
+  async (args) => {
+    if (!managerCli.getComfyPath()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'COMFYUI_PATH is not set. Set it to your ComfyUI installation directory (e.g. /path/to/ComfyUI) to restart ComfyUI and reload custom nodes.',
+          },
+        ],
+      };
+    }
+    const waitForReady = args.wait_for_ready !== false;
+    const syncAfterRestart = args.sync_after_restart ?? waitForReady;
+    const waitTimeoutMs = args.wait_timeout_ms ?? 120_000;
+    try {
+      const result = await managerCli.restartComfyUIAsync({
+        waitForReady,
+        waitTimeoutMs,
+      });
+      if (!result.ok) {
+        return { content: [{ type: 'text', text: `reload_comfyui failed: ${result.message}` }] };
+      }
+      getHybridDiscovery()?.invalidateCache();
+      modelManager.invalidateCache();
+      invalidateBaseNodesCache();
+      let text = result.message;
+      if (syncAfterRestart && result.ready) {
+        const hybrid = getHybridDiscovery();
+        if (hybrid) {
+          try {
+            const syncResult = await hybrid.syncToKnowledgeBase();
+            invalidateBaseNodesCache();
+            text += `\nSync: added ${syncResult.added.length} node(s), skipped ${syncResult.skipped}.`;
+            if (syncResult.errors.length) text += ` Errors: ${syncResult.errors.join('; ')}`;
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            text += `\nSync failed: ${msg}`;
+          }
+        }
+      } else if (syncAfterRestart && !result.ready) {
+        text += '\nComfyUI did not become ready in time; call sync_nodes_to_knowledge manually when it is up.';
+      }
+      return { content: [{ type: 'text', text }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `reload_comfyui failed: ${msg}` }] };
     }
   }
 );

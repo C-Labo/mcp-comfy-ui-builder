@@ -4,6 +4,24 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [Unreleased]
+
+---
+
+## [1.1.4] – 2026-02-03
+
+### Added
+
+- **Icon:** [assets/icon.svg](assets/icon.svg) — node-graph style icon for repo and README.
+- **MCP Registry:** [server.json](server.json) for [MCP Registry](https://modelcontextprotocol.io/registry/about); `mcpName` in package.json (`io.github.MIt9/comfy-ui-builder`). Env vars (COMFYUI_HOST, COMFYUI_PATH, COMFYUI_KNOWLEDGE_DIR) documented in server.json. [scripts/publish.sh](scripts/publish.sh) — MCP Registry publish step.
+- **Distribution:** README Install section (npm one-liner); CONTRIBUTING section on npm/MCP Registry/GitHub topics; package.json keywords extended (model-context-protocol, workflow, image-generation, stable-diffusion, ai).
+
+### Changed
+
+- **Documentation:** README, package.json description, TODO, NEXT-STEPS, IMPROVEMENT-PLAN, ROADMAP updated for v1.1.x; removed outdated phase refs; 62 seed nodes, 50+ tools, WebSocket features clarified. Docker image refs use latest tag.
+
+---
+
 ## [1.1.3] – 2026-02-02
 
 ### Fixed

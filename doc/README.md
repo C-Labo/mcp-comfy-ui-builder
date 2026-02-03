@@ -25,7 +25,7 @@ More details → [GETTING-STARTED.md](GETTING-STARTED.md).
 | **AI assistant guide** (after npm i -g) | [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md) |
 | **ComfyUI API details** (object_info, endpoints) | [comfyui-api-quick-reference.md](comfyui-api-quick-reference.md), [comfyui-api-detailed-guide.md](comfyui-api-detailed-guide.md) |
 | **How to use knowledge base in code** | [knowledge-base-usage-guide.md](knowledge-base-usage-guide.md), [knowledge/README.md](../knowledge/README.md) |
-| **Docker** (MCP + ComfyUI) | [DOCKER-SETUP.md](DOCKER-SETUP.md) — `docker pull siniidrozd/mcp-comfy-ui-builder:0.5.0` |
+| **Docker** (MCP + ComfyUI) | [DOCKER-SETUP.md](DOCKER-SETUP.md) — `docker pull siniidrozd/mcp-comfy-ui-builder` |
 
 ---
 

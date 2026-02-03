@@ -1,13 +1,16 @@
 /**
  * Run ComfyUI-Manager cm-cli (custom nodes) and model download (comfy-cli or fetch).
  * Requires COMFYUI_PATH for installs. Optional: comfy-cli in PATH for model download.
+ * restartComfyUI: kill process on COMFYUI_HOST port and start main.py from COMFYUI_PATH (so custom nodes are reloaded).
  */
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import fetch from 'node-fetch';
 
 const COMFYUI_PATH_ENV = 'COMFYUI_PATH';
+const COMFYUI_HOST_ENV = 'COMFYUI_HOST';
+const DEFAULT_COMFYUI_HOST = 'http://127.0.0.1:8188';
 
 /** Standard model type → relative path from ComfyUI root. */
 export const MODEL_TYPE_PATHS: Record<string, string> = {
@@ -32,6 +35,226 @@ export function getComfyPath(): string | undefined {
   if (!raw || typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
   return trimmed || undefined;
+}
+
+/** Parse COMFYUI_HOST to host and port (default 8188). */
+export function getComfyHostPort(): { host: string; port: number; baseUrl: string } {
+  const raw = process.env[COMFYUI_HOST_ENV] ?? DEFAULT_COMFYUI_HOST;
+  const url = raw.startsWith('http') ? raw : `http://${raw}`;
+  try {
+    const u = new URL(url);
+    const port = u.port ? parseInt(u.port, 10) : 8188;
+    const host = u.hostname || '127.0.0.1';
+    const baseUrl = u.origin || `http://${host}:${port}`;
+    return { host, port: Number.isFinite(port) ? port : 8188, baseUrl };
+  } catch {
+    return { host: '127.0.0.1', port: 8188, baseUrl: DEFAULT_COMFYUI_HOST };
+  }
+}
+
+/** Get PIDs listening on the given port (Unix: lsof; Windows: netstat). */
+function getPidsOnPort(port: number): number[] {
+  const pids: number[] = [];
+  try {
+    if (process.platform === 'win32') {
+      const out = execSync(`netstat -ano | findstr :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+      const seen = new Set<number>();
+      for (const line of out.split(/\r?\n/)) {
+        const m = line.trim().match(/\s+(\d+)\s*$/);
+        if (m) {
+          const pid = parseInt(m[1], 10);
+          if (Number.isFinite(pid) && pid > 0 && !seen.has(pid)) {
+            seen.add(pid);
+            pids.push(pid);
+          }
+        }
+      }
+    } else {
+      const out = execSync(`lsof -ti :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+      for (const s of out.split(/\s+/)) {
+        const pid = parseInt(s, 10);
+        if (Number.isFinite(pid) && pid > 0) pids.push(pid);
+      }
+    }
+  } catch {
+    // No process on port or command failed
+  }
+  return [...new Set(pids)];
+}
+
+/** Kill process(es) listening on the given port. */
+function killProcessOnPort(port: number): { killed: number; error?: string } {
+  const pids = getPidsOnPort(port);
+  if (pids.length === 0) return { killed: 0 };
+  try {
+    if (process.platform === 'win32') {
+      for (const pid of pids) {
+        execSync(`taskkill /F /PID ${pid}`, { stdio: 'pipe' });
+      }
+    } else {
+      for (const pid of pids) {
+        try {
+          process.kill(pid, 'SIGTERM');
+        } catch {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+    return { killed: pids.length };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { killed: 0, error: msg };
+  }
+}
+
+export interface RestartComfyUIOptions {
+  /** Wait for ComfyUI to respond on /system_stats before resolving. Default true. */
+  waitForReady?: boolean;
+  /** Max ms to wait for ready. Default 120000. */
+  waitTimeoutMs?: number;
+  /** Poll interval for ready check. Default 2000. */
+  waitPollMs?: number;
+}
+
+export interface RestartComfyUIResult {
+  ok: boolean;
+  message: string;
+  killed?: number;
+  started?: boolean;
+  ready?: boolean;
+}
+
+/**
+ * Restart ComfyUI: kill process on COMFYUI_HOST port and start main.py from COMFYUI_PATH.
+ * Ensures custom nodes are reloaded. Requires COMFYUI_PATH. Uses COMFYUI_HOST for port.
+ */
+export function restartComfyUI(options: RestartComfyUIOptions = {}): RestartComfyUIResult {
+  const base = getComfyPath();
+  if (!base) {
+    return {
+      ok: false,
+      message: 'COMFYUI_PATH is not set. Set it to your ComfyUI installation directory.',
+    };
+  }
+  const mainPy = join(base, 'main.py');
+  if (!existsSync(mainPy)) {
+    return {
+      ok: false,
+      message: `main.py not found at ${mainPy}. Check COMFYUI_PATH.`,
+    };
+  }
+  const { port } = getComfyHostPort();
+
+  const killResult = killProcessOnPort(port);
+  if (killResult.error && killResult.killed === 0) {
+    return { ok: false, message: `Failed to kill process on port ${port}: ${killResult.error}` };
+  }
+
+  const python = getPythonExecutable(base);
+  const child = spawn(python, ['main.py', '--listen', '--port', String(port)], {
+    cwd: base,
+    detached: true,
+    stdio: 'ignore',
+  });
+  child.unref();
+  if (!child.pid) {
+    return {
+      ok: false,
+      message: `Started ComfyUI but could not detach (pid unknown). Check ${baseUrl} manually.`,
+      killed: killResult.killed,
+      started: true,
+    };
+  }
+
+  return {
+    ok: true,
+    message: `ComfyUI restarted (pid ${child.pid}). Port ${port}. Call sync_nodes_to_knowledge when ready, or use reload_comfyui with wait_for_ready.`,
+    killed: killResult.killed,
+    started: true,
+  };
+}
+
+/** Restart ComfyUI asynchronously; returns a Promise that resolves when ready (or timeout). Use this to reload custom nodes. */
+export function restartComfyUIAsync(
+  options: RestartComfyUIOptions = {}
+): Promise<RestartComfyUIResult> {
+  const base = getComfyPath();
+  if (!base) {
+    return Promise.resolve({
+      ok: false,
+      message: 'COMFYUI_PATH is not set.',
+    });
+  }
+  const mainPy = join(base, 'main.py');
+  if (!existsSync(mainPy)) {
+    return Promise.resolve({
+      ok: false,
+      message: `main.py not found at ${mainPy}.`,
+    });
+  }
+  const { port, baseUrl } = getComfyHostPort();
+  const waitForReady = options.waitForReady !== false;
+  const waitTimeoutMs = options.waitTimeoutMs ?? 120_000;
+  const waitPollMs = options.waitPollMs ?? 2_000;
+
+  const killResult = killProcessOnPort(port);
+  if (killResult.killed > 0) {
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
+  const python = getPythonExecutable(base);
+  const child = spawn(python, ['main.py', '--listen', '--port', String(port)], {
+    cwd: base,
+    detached: true,
+    stdio: 'ignore',
+  });
+  child.unref();
+
+  if (!waitForReady) {
+    return Promise.resolve({
+      ok: true,
+      message: `ComfyUI restarted (pid ${child.pid ?? 'unknown'}). Port ${port}.`,
+      killed: killResult.killed,
+      started: true,
+    });
+  }
+
+  const deadline = Date.now() + waitTimeoutMs;
+  const checkReady = (): Promise<boolean> =>
+    fetch(`${baseUrl.replace(/\/$/, '')}/system_stats`, { method: 'GET' })
+      .then((r) => r.ok)
+      .catch(() => false);
+
+  return new Promise((resolve) => {
+    const t = setInterval(async () => {
+      if (Date.now() > deadline) {
+        clearInterval(t);
+        resolve({
+          ok: true,
+          message: `ComfyUI started but not ready within ${waitTimeoutMs}ms. Check ${baseUrl}.`,
+          killed: killResult.killed,
+          started: true,
+          ready: false,
+        });
+        return;
+      }
+      const ready = await checkReady();
+      if (ready) {
+        clearInterval(t);
+        resolve({
+          ok: true,
+          message: `ComfyUI restarted and ready. Call sync_nodes_to_knowledge to update the knowledge base.`,
+          killed: killResult.killed,
+          started: true,
+          ready: true,
+        });
+      }
+    }, waitPollMs);
+  });
 }
 
 export function isManagerCliConfigured(): boolean {
