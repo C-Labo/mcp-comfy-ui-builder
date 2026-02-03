@@ -127,6 +127,45 @@ describe('ComfyUI client', () => {
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/object_info'), expect.any(Object));
   });
 
+  it('getFirstOutputImageRef returns first image from history entry', async () => {
+    const { getFirstOutputImageRef } = await import('../src/comfyui-client.js');
+    const entry = {
+      prompt_id: 'p1',
+      outputs: {
+        '7': {
+          images: [
+            { filename: 'first.png', subfolder: 'output', type: 'output' },
+            { filename: 'second.png', subfolder: 'output', type: 'output' },
+          ],
+        },
+      },
+    };
+    const ref = getFirstOutputImageRef([entry as any]);
+    expect(ref).toEqual({
+      filename: 'first.png',
+      subfolder: 'output',
+      type: 'output',
+    });
+  });
+
+  it('submitPromptAndWaitWithProgress returns prompt_id on wait failure', async () => {
+    const { submitPromptAndWaitWithProgress } = await import('../src/comfyui-client.js');
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ prompt_id: 'p-timeout' }),
+    });
+
+    const workflow: ComfyUIWorkflow = {
+      '1': { class_type: 'CheckpointLoaderSimple', inputs: {} },
+    };
+
+    const result = await submitPromptAndWaitWithProgress(workflow, 1000);
+
+    expect(result.prompt_id).toBe('p-timeout');
+    expect(['failed', 'timeout']).toContain(result.status);
+    expect(result.error).toBeDefined();
+  });
+
   it('submitPromptAndWait returns completed result when history has entry', async () => {
     const { submitPromptAndWait } = await import('../src/comfyui-client.js');
     mockFetch

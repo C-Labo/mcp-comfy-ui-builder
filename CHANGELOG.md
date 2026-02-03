@@ -8,6 +8,29 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.1.3] – 2026-02-03
+
+### Fixed (Bug_Report_2)
+
+- **execute_workflow_sync повертав `timeout` замість `completed` на MPS/macOS**
+
+  **Симптом:** Генерація виконувалася коректно (файл є, ComfyUI status = success), WebSocket транслював progress до 100%, але `execute_workflow_sync` повертав `status: "timeout"` та `error: "Timed out after 120000ms"`. Потрібен був додатковий виклик `get_execution_status(prompt_id)` для отримання реального статусу — flow не був end-to-end.
+
+  **Причина:** WebSocket event `executing` з `node: null` (сигнал завершення) не приходить або приходить інакше на MPS/macOS. Функція `waitWithWebSocket` чекала лише на `progress.status === 'completed'`, який ніколи не наставав.
+
+  **Рішення:** Fallback на polling після 100% progress. Якщо WebSocket показує `current_node_progress >= 1`, але `completed` event не надходить протягом 3 секунд — автоматично викликається `waitWithPolling(prompt_id)`, який читає GET `/history` і коректно резолвить з `status: 'completed'` та outputs.
+
+  **Зміни:**
+  - [src/comfyui-client.ts](src/comfyui-client.ts) — `waitWithWebSocket()`: умова `current_node_progress >= 1` → `setTimeout(3000)` → `waitWithPolling(promptId, 10_000)`.
+  - Константи: `POLL_FALLBACK_DELAY_MS = 3000`, `POLL_FALLBACK_TIMEOUT_MS = 10_000`.
+
+### Tests
+
+- **comfyui-client-websocket-fallback.test.ts:** Новий файл — мокає WebSocket, що віддає 100% progress без `status: 'completed'`; перевіряє resolve через polling fallback з `status: 'completed'`. [tests/comfyui-client-websocket-fallback.test.ts](tests/comfyui-client-websocket-fallback.test.ts).
+- **comfyui-client.test.ts:** Тест "submitPromptAndWaitWithProgress returns prompt_id on wait failure" — приймає і `failed`, і `timeout` як валідні статуси (залежить від того, чи WS підключається).
+
+---
+
 ## [2.1.2] – 2026-02-03
 
 ### Added

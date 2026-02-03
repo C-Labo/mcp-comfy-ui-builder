@@ -325,6 +325,8 @@ export async function prepareImageForWorkflow(promptId: string): Promise<UploadI
 
 const POLL_INTERVAL_MS = 1500;
 const DEFAULT_SYNC_TIMEOUT_MS = 300_000; // 5 minutes
+const POLL_FALLBACK_DELAY_MS = 3000; // delay before polling when WS shows 100% but no completed event
+const POLL_FALLBACK_TIMEOUT_MS = 10_000; // short poll timeout (execution already done on disk)
 
 /**
  * Submit workflow and wait until execution completes (polling GET /history).
@@ -402,6 +404,7 @@ export async function waitForCompletion(
 
 /**
  * Wait for execution completion using WebSocket
+ * Falls back to polling when progress reaches 100% but completed event never arrives (e.g. MPS/macOS).
  */
 async function waitWithWebSocket(
   wsClient: Awaited<ReturnType<typeof import('./comfyui-ws-client.js').getWSClient>>,
@@ -409,15 +412,20 @@ async function waitWithWebSocket(
   timeoutMs: number,
   onProgress?: (progress: import('./types/comfyui-api-types.js').ExecutionProgress) => void
 ): Promise<ExecutionResult> {
-  const deadline = Date.now() + timeoutMs;
-
   return new Promise((resolve, reject) => {
     let subscription: ReturnType<typeof wsClient.subscribe> | null = null;
     let timeoutId: NodeJS.Timeout | null = null;
+    let pollFallbackId: NodeJS.Timeout | null = null;
+    let completedOrResolving = false;
+    let pollFallbackScheduled = false;
 
     const cleanup = () => {
       if (subscription) subscription.unsubscribe();
+      subscription = null;
       if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = null;
+      if (pollFallbackId) clearTimeout(pollFallbackId);
+      pollFallbackId = null;
     };
 
     subscription = wsClient.subscribe(
@@ -426,6 +434,7 @@ async function waitWithWebSocket(
         onProgress?.(progress);
 
         if (progress.status === 'completed') {
+          completedOrResolving = true;
           cleanup();
           resolve({
             prompt_id: promptId,
@@ -433,12 +442,26 @@ async function waitWithWebSocket(
             outputs: progress.outputs,
           });
         } else if (progress.status === 'failed') {
+          completedOrResolving = true;
           cleanup();
           resolve({
             prompt_id: promptId,
             status: 'failed',
             error: progress.error?.message,
           });
+        } else if (
+          !completedOrResolving &&
+          !pollFallbackScheduled &&
+          progress.current_node_progress !== undefined &&
+          progress.current_node_progress >= 1
+        ) {
+          pollFallbackScheduled = true;
+          completedOrResolving = true;
+          pollFallbackId = setTimeout(async () => {
+            cleanup();
+            const result = await waitWithPolling(promptId, POLL_FALLBACK_TIMEOUT_MS);
+            resolve(result);
+          }, POLL_FALLBACK_DELAY_MS);
         }
       },
       (error) => {
