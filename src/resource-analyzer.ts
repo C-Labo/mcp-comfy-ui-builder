@@ -44,7 +44,7 @@ export interface ResourceRecommendations {
   flux_max_height: number;
   /**
    * Optional platform-specific model hints (e.g. Apple Silicon: M-Flux, ComfyUI-MLX).
-   * Use when gpu_name suggests M1/M2/M3 or MPS; these models may run with lower VRAM than desktop FLUX.
+   * Use when gpu_name suggests M1/M2/M3 or MPS. M-Flux is a quantized/MLX variant (different model or same FLUX via custom nodes), not desktop FLUX; it may run with lower VRAM.
    */
   platform_hints?: string[];
   /**
@@ -170,13 +170,13 @@ export function analyzeSystemResources(stats: SystemStatsResponse): ResourceReco
   const fluxReady = tier === 'high' || tier === 'very_high';
   const fluxMax = fluxReady ? { width: 1024, height: 1024 } : { width: 0, height: 0 };
 
-  /** Apple Silicon (M1/M2/M3, MPS): suggest M-Flux, ComfyUI-MLX and other MPS/MLX-optimized models. */
+  /** Apple Silicon (M1/M2/M3, MPS): suggest M-Flux (quantized/MLX variant — different model or same FLUX via custom nodes), ComfyUI-MLX. */
   const platformHints: string[] = [];
   const gpuLower = String(gpuName).toLowerCase();
   const isMpsOrApple = /apple|m1|m2|m3|mps|metal/.test(gpuLower);
   if (isMpsOrApple) {
     platformHints.push(
-      'Apple Silicon (M1/M2/M3): M-Flux (Mflux-ComfyUI), ComfyUI-MLX and other MPS/MLX-optimized models may run with lower memory than desktop FLUX; use txt2img for SD 1.5/SDXL, or install M-Flux/MLX nodes for FLUX-style generation.'
+      'Apple Silicon (M1/M2/M3): M-Flux is a quantized/MLX variant (separate model or FLUX via custom nodes like Mflux-ComfyUI, ComfyUI-MLX), not desktop FLUX; it may run with lower memory. Use txt2img for SD 1.5/SDXL, or install M-Flux/MLX nodes for FLUX-style generation.'
     );
   }
 

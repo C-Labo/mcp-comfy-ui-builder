@@ -886,7 +886,7 @@ server.registerTool(
   'execute_workflow_sync',
   {
     description:
-      'Submit a ComfyUI workflow and wait until execution completes with real-time progress (WebSocket if available, polling fallback). Returns prompt_id, status (completed/failed/timeout), and outputs. When timeout_ms is omitted, uses recommended_timeout_ms from get_system_resources (higher on MPS/Apple). Use when you need the result before continuing. Requires COMFYUI_HOST.',
+      'Submit a ComfyUI workflow and wait until execution completes with real-time progress (WebSocket if available, polling fallback). Returns prompt_id, status (completed/failed/timeout), and outputs. When status is error, still check outputs — if present, use download_output or get_last_output to retrieve files. When timeout_ms is omitted, uses recommended_timeout_ms from get_system_resources (higher on MPS/Apple). Requires COMFYUI_HOST.',
     inputSchema: {
       workflow: z.string().describe('Workflow JSON string (from build_workflow or loaded file)'),
       timeout_ms: z.number().int().min(1000).optional().describe('Max wait in milliseconds. When omitted, uses get_system_resources recommended_timeout_ms (e.g. 1.2M on MPS).'),
@@ -951,7 +951,11 @@ server.registerTool(
         timeoutMs,
         streamProgress
           ? (progress) => {
-              const status = `[${progress.status}] ${progress.current_node ?? 'waiting'}`;
+              const nodeStr =
+                progress.current_node != null
+                  ? String(progress.current_node)
+                  : 'waiting';
+              const status = `[${progress.status}] ${nodeStr}`;
               const progressPct = progress.current_node_progress
                 ? ` (${Math.round(progress.current_node_progress * 100)}%)`
                 : '';
@@ -959,12 +963,19 @@ server.registerTool(
             }
           : undefined
       );
+      const hasOutputs =
+        result.outputs != null && Object.keys(result.outputs).length > 0;
       const output: Record<string, unknown> = {
         prompt_id: result.prompt_id,
         status: result.status === 'failed' ? 'error' : result.status,
         ...(result.outputs != null && { outputs: result.outputs }),
         ...(result.error != null && { error: result.error }),
         ...(progressUpdates.length > 0 && { progress_log: progressUpdates }),
+        ...(result.status === 'failed' &&
+          hasOutputs && {
+            outputs_present_hint:
+              'Outputs are present; use download_output or get_last_output to retrieve files even when status is error.',
+          }),
       };
       return { content: [{ type: 'text', text: JSON.stringify(output, null, 2) }] };
     } catch (e) {
@@ -1664,7 +1675,7 @@ server.registerTool(
   'get_system_resources',
   {
     description:
-      'Get ComfyUI station resources (GPU/VRAM/RAM) and recommendations for model size, resolution, and batch size. Returns flux_ready (FLUX needs ~12GB+ VRAM) and platform_hints (e.g. Apple Silicon: M-Flux, ComfyUI-MLX). Call this first before building or executing workflows to avoid OOM. Requires COMFYUI_HOST.',
+      'Get ComfyUI station resources (GPU/VRAM/RAM) and recommendations for model size, resolution, and batch size. Returns flux_ready (desktop FLUX needs ~12GB+ VRAM) and platform_hints (e.g. Apple Silicon: M-Flux as quantized/MLX variant — different model or FLUX via custom nodes). Call this first before building or executing workflows to avoid OOM. Requires COMFYUI_HOST.',
     inputSchema: {},
   },
   async () => {

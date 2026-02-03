@@ -47,10 +47,10 @@ Many diffusion models **render text poorly**: blurry, wrong letters, or gibberis
 
 On **Apple Silicon** (M1/M2/M3, MPS), `get_system_resources` may return **platform_hints** suggesting alternatives that run with lower memory than desktop FLUX:
 
-- **M-Flux** (Mflux-ComfyUI) — MLX port of FLUX for Apple Silicon; install via ComfyUI-Manager or [Mflux-ComfyUI](https://github.com/raysers/Mflux-ComfyUI).
+- **M-Flux** (Mflux-ComfyUI) — quantized/MLX variant of FLUX for Apple Silicon (a **different model** or the same FLUX architecture via custom nodes); install via ComfyUI-Manager or [Mflux-ComfyUI](https://github.com/raysers/Mflux-ComfyUI). Not the same as the desktop FLUX checkpoint used with `txt2img_flux`.
 - **ComfyUI-MLX** — MLX-optimized nodes for Flux on Apple Silicon (faster load, lower memory); see [ComfyUI-MLX](https://github.com/thoddnn/comfyui-mlx).
 
-Use **txt2img** for SD 1.5 / SD XL, or install M-Flux/MLX custom nodes for FLUX-style generation when `flux_ready` is false or when you prefer MPS/MLX-optimized models.
+Use **txt2img** for SD 1.5 / SD XL, or install M-Flux/MLX custom nodes for FLUX-style generation when `flux_ready` is false or when you prefer MPS/MLX-optimized models. Note: `flux_ready` refers to **desktop FLUX** (~12GB+ VRAM); M-Flux is a separate quantized/MLX option.
 
 ---
 

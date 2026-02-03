@@ -396,7 +396,13 @@ export async function submitPromptAndWait(
       // Treat status_str 'error' or 'canceled' as failure even when messages is empty (ComfyUI may not populate messages).
       const hasError = statusStr === 'error' || statusStr === 'canceled' || Boolean(messages?.length);
       const errorDetail = hasError
-        ? (messages?.length ? String(messages[0]) : statusStr === 'error' ? 'Execution failed (see get_execution_status for details)' : 'Canceled')
+        ? (messages?.length
+            ? typeof messages[0] === 'object' && messages[0] !== null
+              ? JSON.stringify(messages[0])
+              : String(messages[0])
+            : statusStr === 'error'
+              ? 'Execution failed (see get_execution_status for details)'
+              : 'Canceled')
         : undefined;
       return {
         prompt_id,
@@ -568,7 +574,13 @@ async function waitWithPolling(promptId: string, timeoutMs: number): Promise<Exe
       const statusStr = statusObj?.status_str?.toLowerCase();
       const hasError = statusStr === 'error' || statusStr === 'canceled' || Boolean(messages?.length);
       const errorDetail = hasError
-        ? (messages?.length ? String(messages[0]) : statusStr === 'error' ? 'Execution failed (see get_execution_status for details)' : 'Canceled')
+        ? (messages?.length
+            ? typeof messages[0] === 'object' && messages[0] !== null
+              ? JSON.stringify(messages[0])
+              : String(messages[0])
+            : statusStr === 'error'
+              ? 'Execution failed (see get_execution_status for details)'
+              : 'Canceled')
         : undefined;
       return {
         prompt_id: promptId,

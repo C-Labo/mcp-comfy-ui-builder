@@ -6,6 +6,19 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ## [Unreleased]
 
+## [2.3.1] – 2026-02-03
+
+### Fixed (REPORT-MCP-SERVER-USAGE, status vs outputs)
+
+- **execute_workflow_sync status "error" when outputs present:** When status is failed but outputs exist, response now includes **outputs_present_hint** advising to use `download_output` or `get_last_output`. Tool description updated: when status is error, still check outputs and use download/get_last_output to retrieve files. [src/mcp-server.ts](src/mcp-server.ts).
+- **Progress/error message `[object Object]`:** Progress log uses `String(progress.current_node)` so node id is never serialized as `[object Object]`. ComfyUI history error detail: when `messages[0]` is an object, use `JSON.stringify(messages[0])` instead of `String(messages[0])` for readable error text. [src/mcp-server.ts](src/mcp-server.ts), [src/comfyui-client.ts](src/comfyui-client.ts).
+
+### Changed (docs, M-Flux clarification)
+
+- **M-Flux vs desktop FLUX:** Clarified that M-Flux is a quantized/MLX variant (different model or same FLUX via custom nodes like Mflux-ComfyUI, ComfyUI-MLX), not desktop FLUX. `flux_ready` refers to desktop FLUX (~12GB+ VRAM). [src/resource-analyzer.ts](src/resource-analyzer.ts), [doc/IMAGE-GENERATION-RECOMMENDATIONS.md](doc/IMAGE-GENERATION-RECOMMENDATIONS.md), [src/mcp-server.ts](src/mcp-server.ts) — get_system_resources description.
+
+---
+
 ## [2.3.0] – 2026-02-03
 
 ### Added (ComfyUI_MCP_Feedback — FLUX, Apple Silicon)
