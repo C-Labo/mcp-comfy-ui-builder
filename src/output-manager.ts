@@ -30,50 +30,64 @@ function buildViewUrl(filename: string, subfolder?: string, type: string = 'outp
   return `${getBaseUrl()}/view?${params.toString()}`;
 }
 
+const LIST_OUTPUTS_RETRY_DELAY_MS = 2000;
+const LIST_OUTPUTS_MAX_RETRIES = 3;
+
 /**
  * List all output files for a completed prompt (from GET /history).
  * If GET /history/{prompt_id} returns empty (e.g. fresh prompt), fallback to full history.
+ * Retries up to LIST_OUTPUTS_MAX_RETRIES with delay — ComfyUI may need ~2s to write to history after completed.
  */
 export async function listOutputs(promptId: string): Promise<OutputFile[]> {
-  let entries = await comfyui.getHistory(promptId);
-  if (entries.length === 0) {
-    const allEntries = (await comfyui.getHistory()) ?? [];
-    const match = allEntries.find((e) => (e.prompt_id ?? '').toString() === promptId);
-    if (match) entries = [match];
-  }
-  if (entries.length === 0) {
-    return [];
-  }
-  const entry = entries[0];
-  const outputs = entry.outputs ?? {};
-  const files: OutputFile[] = [];
-  for (const [nodeId, out] of Object.entries(outputs)) {
-    const nodeOut = out as HistoryNodeOutput;
-    const images = nodeOut.images ?? [];
-    for (const img of images) {
-      const i = img as HistoryImageOutput;
-      files.push({
-        prompt_id: promptId,
-        node_id: nodeId,
-        type: 'image',
-        filename: i.filename,
-        subfolder: i.subfolder ?? '',
-        url: buildViewUrl(i.filename, i.subfolder, i.type ?? 'output'),
-      });
+  const tryList = async (): Promise<OutputFile[]> => {
+    let entries = (await comfyui.getHistory(promptId)) ?? [];
+    if (entries.length === 0) {
+      const allEntries = (await comfyui.getHistory()) ?? [];
+      const match = allEntries.find((e) => (e.prompt_id ?? '').toString() === promptId);
+      if (match) entries = [match];
     }
-    const gifs = (nodeOut as { gifs?: HistoryImageOutput[] }).gifs ?? [];
-    for (const g of gifs) {
-      files.push({
-        prompt_id: promptId,
-        node_id: nodeId,
-        type: 'gif',
-        filename: g.filename,
-        subfolder: g.subfolder ?? '',
-        url: buildViewUrl(g.filename, g.subfolder, g.type ?? 'output'),
-      });
+    if (entries.length === 0) return [];
+
+    const entry = entries[0];
+    const outputs = entry.outputs ?? {};
+    const files: OutputFile[] = [];
+    for (const [nodeId, out] of Object.entries(outputs)) {
+      const nodeOut = out as HistoryNodeOutput;
+      const images = nodeOut.images ?? [];
+      for (const img of images) {
+        const i = img as HistoryImageOutput;
+        files.push({
+          prompt_id: promptId,
+          node_id: nodeId,
+          type: 'image',
+          filename: i.filename,
+          subfolder: i.subfolder ?? '',
+          url: buildViewUrl(i.filename, i.subfolder, i.type ?? 'output'),
+        });
+      }
+      const gifs = (nodeOut as { gifs?: HistoryImageOutput[] }).gifs ?? [];
+      for (const g of gifs) {
+        files.push({
+          prompt_id: promptId,
+          node_id: nodeId,
+          type: 'gif',
+          filename: g.filename,
+          subfolder: g.subfolder ?? '',
+          url: buildViewUrl(g.filename, g.subfolder, g.type ?? 'output'),
+        });
+      }
+    }
+    return files;
+  };
+
+  for (let attempt = 0; attempt < LIST_OUTPUTS_MAX_RETRIES; attempt++) {
+    const files = await tryList();
+    if (files.length > 0) return files;
+    if (attempt < LIST_OUTPUTS_MAX_RETRIES - 1) {
+      await new Promise((r) => setTimeout(r, LIST_OUTPUTS_RETRY_DELAY_MS));
     }
   }
-  return files;
+  return [];
 }
 
 /**

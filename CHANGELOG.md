@@ -8,6 +8,19 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.1.6] – 2026-02-03
+
+### Fixed (Bug_Report_3 — timing, download_by_filename)
+
+- **list_outputs timing:** ComfyUI може записати history з ~2с затримкою після `completed`. `listOutputs` тепер робить до 3 спроб з паузою 2с між ними. [src/output-manager.ts](src/output-manager.ts).
+- **download_by_filename 404:** При 404 retry з alternate host (127.0.0.1 ↔ localhost) для випадків, коли ComfyUI прив’язаний до іншого host. [src/comfyui-client.ts](src/comfyui-client.ts) — `fetchOutputByFilename()`.
+
+### Tests
+
+- **output-manager.test.ts:** Тест retry — outputs з’являються після delay. [tests/output-manager.test.ts](tests/output-manager.test.ts).
+
+---
+
 ## [2.1.5] – 2026-02-03
 
 ### Fixed (Bug_Report_3)

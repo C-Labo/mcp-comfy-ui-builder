@@ -48,6 +48,28 @@ describe('listOutputs', () => {
     expect(files[0].url).toContain('filename=00001.png');
   });
 
+  it('retries and returns outputs when history appears after delay (timing)', async () => {
+    // Attempt 1: empty; attempt 2: empty; attempt 3: has entry
+    mockGetHistory
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          prompt_id: 'p1',
+          outputs: {
+            '7': { images: [{ filename: 'delayed.png', subfolder: 'output', type: 'output' }] },
+          },
+        },
+      ]);
+    const { listOutputs } = await import('../src/output-manager.js');
+    const files = await listOutputs('p1');
+    expect(files).toHaveLength(1);
+    expect(files[0].filename).toBe('delayed.png');
+    expect(mockGetHistory).toHaveBeenCalledTimes(5);
+  }, 10_000);
+
   it('falls back to full history when GET /history/{id} returns empty (fresh prompt)', async () => {
     mockGetHistory
       .mockResolvedValueOnce([]) // GET /history/p1 returns empty

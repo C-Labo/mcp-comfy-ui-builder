@@ -244,8 +244,22 @@ export function getFirstOutputImageRef(entries: HistoryEntry[]): OutputImageRef 
 }
 
 /**
+ * Swap 127.0.0.1 and localhost in URL for host binding fallback (MPS/Docker).
+ */
+function swapHostInUrl(url: string): string | null {
+  if (url.includes('127.0.0.1')) {
+    return url.replace('127.0.0.1', 'localhost');
+  }
+  if (url.includes('localhost')) {
+    return url.replace('localhost', '127.0.0.1');
+  }
+  return null;
+}
+
+/**
  * Fetch file bytes from ComfyUI /view by filename (no prompt_id needed).
  * Use when you have filename from get_history or get_last_output.
+ * On 404, retries with alternate host (127.0.0.1 ↔ localhost) when ComfyUI binds differently.
  */
 export async function fetchOutputByFilename(
   filename: string,
@@ -257,8 +271,23 @@ export async function fetchOutputByFilename(
     type: options?.type ?? 'output',
     ...(options?.subfolder ? { subfolder: options.subfolder } : {}),
   });
-  const url = `${base}/view?${params.toString()}`;
-  const res = await fetchWithRetry(url, { method: 'GET' });
+  const path = `/view?${params.toString()}`;
+  const url = `${base}${path}`;
+
+  const tryFetch = async (targetUrl: string) => {
+    return fetch(targetUrl, {
+      method: 'GET',
+      headers: { Accept: 'application/octet-stream, image/*' },
+    });
+  };
+
+  let res = await tryFetch(url);
+  if (res.status === 404) {
+    const altUrl = swapHostInUrl(url);
+    if (altUrl) {
+      res = await tryFetch(altUrl);
+    }
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`ComfyUI /view failed (${res.status}): ${text || res.statusText}`);
