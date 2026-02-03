@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BaseNodesJson, NodeCompatibilityData, NodeDescription } from './types/node-types.js';
-import { buildFromTemplate, listTemplates } from './workflow/workflow-builder.js';
+import { buildFromTemplate, listTemplates, buildRestyleWithRecipe, STYLE_PROMPTS } from './workflow/workflow-builder.js';
 import { saveWorkflow, listSavedWorkflows, loadWorkflow } from './workflow/workflow-storage.js';
 import {
   addNode,
@@ -569,6 +569,59 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `build_workflow failed: ${msg}` }] };
+    }
+  }
+);
+
+const RESTYLE_STYLE_KEYS = Object.keys(STYLE_PROMPTS).join(', ');
+
+server.registerTool(
+  'build_restyle_workflow',
+  {
+    description:
+      'Build a workflow that takes your image and outputs another image in a chosen style (cartoon, oil painting, anime, etc.). Returns workflow JSON plus a recipe (prompt and params) so you can run it or regenerate with the same settings. Image must be in ComfyUI input folder (upload first if needed). Style: keyword (' +
+      RESTYLE_STYLE_KEYS +
+      ') or any free text used as prompt.',
+    inputSchema: {
+      image: z.string().describe('Input image filename in ComfyUI input folder (e.g. from upload or prepare_image_for_workflow)'),
+      style: z.string().describe('Style: keyword (cartoon, oil_painting, anime, watercolor, sketch, comic, pixel_art, pastel, cyberpunk) or free text prompt'),
+      prompt: z.string().optional().describe('Override prompt (if set, style keyword is ignored)'),
+      negative_prompt: z.string().optional().describe('Negative prompt'),
+      denoise: z.number().min(0).max(1).optional().describe('Strength of style change (default 0.65, lower = closer to original)'),
+      steps: z.number().int().min(1).optional(),
+      cfg: z.number().optional(),
+      seed: z.number().int().optional(),
+      ckpt_name: z.string().optional().describe('Checkpoint filename'),
+      filename_prefix: z.string().optional().describe('SaveImage prefix'),
+    },
+  },
+  (args) => {
+    try {
+      const { workflow, recipe } = buildRestyleWithRecipe({
+        image: args.image,
+        style: args.style,
+        prompt: args.prompt,
+        negative_prompt: args.negative_prompt,
+        denoise: args.denoise,
+        steps: args.steps,
+        cfg: args.cfg,
+        seed: args.seed,
+        ckpt_name: args.ckpt_name,
+        filename_prefix: args.filename_prefix,
+      });
+      const text = JSON.stringify(
+        {
+          workflow: workflow,
+          recipe,
+          hint: 'Use workflow with execute_workflow or execute_workflow_sync; save with save_workflow. Recipe contains prompt and params used for regeneration.',
+        },
+        null,
+        2
+      );
+      return { content: [{ type: 'text', text }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `build_restyle_workflow failed: ${msg}` }] };
     }
   }
 );
@@ -1441,13 +1494,15 @@ server.registerTool(
 server.registerTool(
   'download_output',
   {
-    description: 'Download a single output file to a local path. Use list_outputs to get file info. Requires COMFYUI_HOST.',
+    description: 'Download a single output file to a local path. Use list_outputs to get file info. Use output_format to convert to png, jpeg, or webp. Requires COMFYUI_HOST.',
     inputSchema: {
       prompt_id: z.string().describe('Prompt id'),
       node_id: z.string().describe('Node id (from list_outputs)'),
       filename: z.string().describe('Filename (from list_outputs)'),
       dest_path: z.string().describe('Local path to save the file'),
       subfolder: z.string().optional().describe('Subfolder (from list_outputs)'),
+      output_format: z.enum(['png', 'jpeg', 'webp']).optional().describe('Convert image to this format (png, jpeg, or webp)'),
+      convert_quality: z.number().min(1).max(100).optional().describe('Quality for jpeg/webp (default 85)'),
     },
   },
   async (args) => {
@@ -1462,6 +1517,16 @@ server.registerTool(
       if (!file) {
         return { content: [{ type: 'text', text: `No matching output for prompt_id=${args.prompt_id}, node_id=${args.node_id}, filename=${args.filename}` }] };
       }
+      if (args.output_format && file.type === 'image') {
+        const result = await downloadByFilename(file.filename, args.dest_path, {
+          subfolder: file.subfolder || undefined,
+          type: 'output',
+          output_format: args.output_format,
+          convert_quality: args.convert_quality,
+        });
+        const path = 'path' in result ? result.path : args.dest_path;
+        return { content: [{ type: 'text', text: `Saved: ${path}` }] };
+      }
       const path = await downloadOutput(file, args.dest_path);
       return { content: [{ type: 'text', text: `Saved: ${path}` }] };
     } catch (e) {
@@ -1475,7 +1540,7 @@ server.registerTool(
   'download_by_filename',
   {
     description:
-      'Download an output file by filename (no prompt_id needed). Uses GET /view. Use when you have filename from get_history or get_last_output. If return_base64 is true, file is not written to disk; returns base64 data. When size > 800 KB, automatically converts to WebP to stay under 1MB base64 limits. Requires COMFYUI_HOST.',
+      'Download an output file by filename (no prompt_id needed). Uses GET /view. Use when you have filename from get_history or get_last_output. If return_base64 is true, file is not written to disk; returns base64 data. When size > 800 KB, automatically converts to WebP to stay under 1MB base64 limits. Use output_format to convert to png, jpeg, or webp. Requires COMFYUI_HOST.',
     inputSchema: {
       filename: z.string().describe('Output filename (e.g. from get_last_output or get_history)'),
       dest_path: z.string().describe('Local path to save the file (ignored when return_base64 is true)'),
@@ -1484,6 +1549,7 @@ server.registerTool(
       return_base64: z.boolean().optional().describe('If true, return file as base64 (auto WebP when > 800 KB)'),
       max_base64_bytes: z.number().int().min(0).optional().describe('When return_base64 and file size > this, convert to WebP (default 819200). Set 0 to disable.'),
       convert_quality: z.number().min(1).max(100).optional().describe('WebP/JPEG quality when converting (default 85)'),
+      output_format: z.enum(['png', 'jpeg', 'webp']).optional().describe('Convert image to this format (png, jpeg, or webp) before saving or returning base64'),
     },
   },
   async (args) => {
@@ -1497,6 +1563,7 @@ server.registerTool(
         returnBase64: args.return_base64 ?? false,
         max_base64_bytes: args.max_base64_bytes,
         convert_quality: args.convert_quality,
+        output_format: args.output_format,
       });
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (e) {

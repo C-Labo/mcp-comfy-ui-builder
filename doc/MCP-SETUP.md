@@ -40,8 +40,9 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 
 | Tool | Description |
 |------|------|
-| **list_templates** | List workflow template ids (e.g. txt2img, txt2img_flux, img2img, inpainting) |
+| **list_templates** | List workflow template ids (e.g. txt2img, img2img, restyle, inpainting) |
 | **build_workflow(template, params?)** | Build ComfyUI workflow JSON from template. For txt2img_flux call get_system_resources first (flux_ready). |
+| **build_restyle_workflow(image, style, …)** | Build workflow that turns your image into a chosen style (cartoon, oil_painting, anime, etc.). Returns workflow JSON + recipe (prompt and params) for regeneration. |
 | **suggest_template_for_checkpoint(ckpt_name)** | Suggest template (txt2img_flux or txt2img) from checkpoint filename (flux/sdxl/sd1.5). Call before build_workflow when user did not specify template. |
 | **create_template(workflow, params_def)** | Create a parameterized template from a workflow |
 | **apply_template(template, values)** | Apply parameter values to a template; returns workflow JSON |
@@ -76,8 +77,8 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 | **get_history(limit?)** | Get ComfyUI execution history (GET /history) without prompt_id. Returns last N prompts with prompt_id, status, outputs. Use when execute_workflow_sync did not return prompt_id (e.g. WebSocket timeout) to find the latest run. |
 | **get_last_output()** | Get info for the most recent completed prompt output (first image). Returns prompt_id, filename, subfolder, view_url. Use when prompt_id was lost; then use download_by_filename to save the file. |
 | **list_outputs(prompt_id)** | List output files (images, etc.) for a prompt |
-| **download_output(prompt_id, node_id, filename, dest_path)** | Download a single output file (requires prompt_id) |
-| **download_by_filename(filename, dest_path, subfolder?, type?, return_base64?, max_base64_bytes?, convert_quality?)** | Download an output file by filename (no prompt_id). When return_base64 true and size > 800 KB, auto-converts to WebP to stay under ~1MB. Use when you have filename from get_history or get_last_output. |
+| **download_output(prompt_id, node_id, filename, dest_path, subfolder?, output_format?, convert_quality?)** | Download a single output file (requires prompt_id). Use output_format (png/jpeg/webp) to convert image before saving. |
+| **download_by_filename(filename, dest_path, subfolder?, type?, return_base64?, max_base64_bytes?, convert_quality?, output_format?)** | Download an output file by filename (no prompt_id). When return_base64 true and size > 800 KB, auto-converts to WebP to stay under ~1MB. Use output_format (png/jpeg/webp) to always convert image. Use when you have filename from get_history or get_last_output. |
 | **download_all_outputs(prompt_id, dest_dir)** | Download all outputs for a prompt to a directory |
 
 ### Resources & model management (COMFYUI_HOST)

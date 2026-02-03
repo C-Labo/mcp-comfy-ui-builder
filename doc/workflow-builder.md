@@ -97,6 +97,25 @@ Image-to-image: LoadImage → VAEEncode → CheckpointLoaderSimple → CLIPTextE
 
 Example: `build_workflow("img2img", { image: "photo.png", prompt: "oil painting style", denoise: 0.6 })`.
 
+### restyle
+
+Image-to-image in a chosen style (cartoon, oil painting, anime, etc.). Same pipeline as img2img; **style** is mapped to a prompt (or use free text). Returns workflow + **recipe** (prompt and params) so you can regenerate or tweak. Use **build_restyle_workflow** to get workflow JSON and recipe in one call.
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| image | string | input.png | Input image filename (in ComfyUI input folder; upload first if needed) |
+| style | string | — | Keyword: cartoon, oil_painting, anime, watercolor, sketch, comic, pixel_art, pastel, cyberpunk — or any free text used as prompt |
+| prompt | string | — | Override prompt (if set, style keyword is ignored) |
+| negative_prompt | string | '' | Negative prompt |
+| denoise | number | 0.65 | Strength of style change (lower = closer to original) |
+| steps | number | 20 | Sampler steps |
+| cfg | number | 8 | CFG scale |
+| seed | number | 0 | Random seed |
+| ckpt_name | string | sd_xl_base_1.0.safetensors | Checkpoint filename |
+| filename_prefix | string | ComfyUI_img2img | SaveImage prefix |
+
+Example: `build_workflow("restyle", { image: "photo.png", style: "cartoon" })`. Or use **build_restyle_workflow(image, style)** to get `{ workflow, recipe }` with prompt and params for regeneration.
+
 ### image_caption
 
 Image-to-text (caption): LoadImage → BLIPCaption. **Requires a custom node pack** (e.g. [ComfyUI-Blip](https://github.com/1038lab/ComfyUI-Blip), comfyui-art-venture, or img2txt-comfyui-nodes). Use after **prepare_image_for_workflow(prompt_id)** to verify a generated image.
@@ -249,8 +268,8 @@ After execution:
 - **get_history(limit?)** — get ComfyUI execution history without prompt_id (last N prompts with prompt_id, status, outputs). Use when execute_workflow_sync did not return prompt_id (e.g. WebSocket timeout).
 - **get_last_output()** — get the most recent completed prompt’s first image (prompt_id, filename, view_url). Then use **download_by_filename** to save.
 - **list_outputs(prompt_id)** — list output files (images, etc.) for a prompt.
-- **download_output(prompt_id, node_id, filename, dest_path, subfolder?)** — save one file locally (requires prompt_id).
-- **download_by_filename(filename, dest_path, subfolder?, type?)** — save an output file by filename (no prompt_id). Use when you have filename from get_history or get_last_output.
+- **download_output(prompt_id, node_id, filename, dest_path, subfolder?, output_format?, convert_quality?)** — save one file locally (requires prompt_id). Use output_format (png/jpeg/webp) to convert image before saving.
+- **download_by_filename(filename, dest_path, subfolder?, type?, return_base64?, output_format?, convert_quality?)** — save an output file by filename (no prompt_id). Use output_format (png/jpeg/webp) to convert image. Use when you have filename from get_history or get_last_output.
 - **download_all_outputs(prompt_id, dest_dir, prefix_node_id?)** — save all outputs to a directory.
 
 ***

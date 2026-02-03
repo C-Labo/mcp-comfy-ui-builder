@@ -147,12 +147,52 @@ export async function downloadOutput(file: OutputFile, destPath: string): Promis
 const BASE64_CONVERT_THRESHOLD_BYTES = 800 * 1024; // 800 KB — auto-convert to WebP when larger
 const WEBP_QUALITY = 85;
 
+export type OutputImageFormat = 'png' | 'jpeg' | 'webp';
+
+const IMAGE_EXT = /\.(png|jpg|jpeg|webp|gif)$/i;
+
+function getMimeForExt(ext: string): string {
+  switch (ext.toLowerCase()) {
+    case 'png':
+      return 'image/png';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'webp':
+      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+/** Convert image buffer to the requested format. Returns buffer, mime, and new filename extension. */
+async function convertImageToFormat(
+  buffer: Buffer,
+  format: OutputImageFormat,
+  quality: number
+): Promise<{ buffer: Buffer; mime: string; ext: string }> {
+  const s = sharp(buffer);
+  if (format === 'png') {
+    const out = await s.png().toBuffer();
+    return { buffer: Buffer.from(out), mime: 'image/png', ext: 'png' };
+  }
+  if (format === 'jpeg') {
+    const out = await s.jpeg({ quality }).toBuffer();
+    return { buffer: Buffer.from(out), mime: 'image/jpeg', ext: 'jpg' };
+  }
+  const out = await s.webp({ quality }).toBuffer();
+  return { buffer: Buffer.from(out), mime: 'image/webp', ext: 'webp' };
+}
+
 /**
  * Download an output file by filename (no prompt_id needed). Uses GET /view.
  * Use when you have filename from get_history or get_last_output.
  * Returns the written path and size in bytes.
  * When returnBase64 is true, does not write to disk; returns base64 data for remote MCP.
  * If size > 800 KB, automatically converts to WebP (quality 85) to stay under typical 1MB base64 limits.
+ * Use output_format to always convert to png, jpeg, or webp (e.g. for smaller files or compatibility).
  */
 export async function downloadByFilename(
   filename: string,
@@ -165,6 +205,8 @@ export async function downloadByFilename(
     max_base64_bytes?: number;
     /** Quality for WebP/JPEG conversion (1–100). Default 85. */
     convert_quality?: number;
+    /** Force output format: png, jpeg, or webp. Conversion is done server-side with sharp. */
+    output_format?: OutputImageFormat;
   }
 ): Promise<
   | { path: string; size: number }
@@ -174,37 +216,53 @@ export async function downloadByFilename(
     subfolder: options?.subfolder,
     type: options?.type ?? 'output',
   });
-  const buffer = Buffer.from(bytes);
+  let buffer = Buffer.from(bytes);
+  const quality = Math.min(100, Math.max(1, options.convert_quality ?? WEBP_QUALITY));
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const isImage = ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp' || ext === 'gif';
+
+  // Explicit format: always convert to requested format when the file is an image.
+  if (options?.output_format && isImage) {
+    try {
+      const { buffer: converted, mime, ext: outExt } = await convertImageToFormat(buffer, options.output_format, quality);
+      buffer = converted;
+      const outFilename = filename.replace(IMAGE_EXT, `.${outExt}`);
+
+      if (options?.returnBase64) {
+        return {
+          filename: outFilename,
+          mime,
+          encoding: 'base64',
+          data: buffer.toString('base64'),
+          converted: true,
+          original_size: bytes.byteLength,
+        };
+      }
+      const outPath = IMAGE_EXT.test(destPath) ? destPath.replace(IMAGE_EXT, `.${outExt}`) : `${destPath}.${outExt}`;
+      const dir = dirname(outPath);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(outPath, buffer);
+      return { path: outPath, size: buffer.length };
+    } catch {
+      // Fall through to original buffer if conversion fails
+    }
+  }
 
   if (options?.returnBase64) {
     const maxBytes = options.max_base64_bytes ?? BASE64_CONVERT_THRESHOLD_BYTES;
-    const quality = Math.min(100, Math.max(1, options.convert_quality ?? WEBP_QUALITY));
     let outBuffer = buffer;
-    let mime = 'application/octet-stream';
+    let mime = isImage ? getMimeForExt(ext!) : 'application/octet-stream';
     let outFilename = filename;
     let converted = false;
-    const ext = filename.split('.').pop()?.toLowerCase();
-    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp' || ext === 'gif') {
-      mime =
-        ext === 'png'
-          ? 'image/png'
-          : ext === 'jpg' || ext === 'jpeg'
-            ? 'image/jpeg'
-            : ext === 'webp'
-              ? 'image/webp'
-              : ext === 'gif'
-                ? 'image/gif'
-                : 'application/octet-stream';
-      if (maxBytes > 0 && buffer.length > maxBytes) {
-        try {
-          const webpBuf = await sharp(buffer).webp({ quality }).toBuffer();
-          outBuffer = Buffer.from(webpBuf);
-          mime = 'image/webp';
-          outFilename = filename.replace(/\.[a-z]+$/i, '.webp');
-          converted = true;
-        } catch {
-          // Keep original if sharp fails
-        }
+    if (isImage && maxBytes > 0 && buffer.length > maxBytes) {
+      try {
+        const { buffer: webpBuf, mime: webpMime, ext: webpExt } = await convertImageToFormat(buffer, 'webp', quality);
+        outBuffer = webpBuf;
+        mime = webpMime;
+        outFilename = filename.replace(IMAGE_EXT, `.${webpExt}`);
+        converted = true;
+      } catch {
+        // Keep original if sharp fails
       }
     }
     return {

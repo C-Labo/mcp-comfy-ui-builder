@@ -6,6 +6,8 @@ import {
   buildFromTemplate,
   listTemplates,
   buildBatch,
+  buildRestyleWithRecipe,
+  STYLE_PROMPTS,
 } from '../src/workflow/workflow-builder.js';
 import type { ComfyUIWorkflow } from '../src/types/comfyui-api-types.js';
 
@@ -98,6 +100,42 @@ describe('workflow-builder', () => {
     expect(workflow['2'].inputs).toMatchObject({ image: 'test.png' });
     expect(workflow['4'].inputs).toMatchObject({ text: 'enhance this' });
     expect(workflow['5'].inputs).toMatchObject({ text: 'bad quality' });
+  });
+
+  it('listTemplates includes restyle', () => {
+    expect(listTemplates()).toContain('restyle');
+  });
+
+  it('buildFromTemplate("restyle") uses style keyword to set prompt', () => {
+    const workflow = buildFromTemplate('restyle', {
+      image: 'photo.png',
+      style: 'cartoon',
+    });
+    expect(workflow['2'].inputs).toMatchObject({ image: 'photo.png' });
+    expect(workflow['4'].inputs.text).toBe(STYLE_PROMPTS.cartoon);
+    expect(workflow['6'].inputs.denoise).toBe(0.65);
+  });
+
+  it('buildFromTemplate("restyle", style: oil_painting) uses oil painting prompt', () => {
+    const workflow = buildFromTemplate('restyle', { image: 'x.png', style: 'oil_painting' });
+    expect(workflow['4'].inputs.text).toBe(STYLE_PROMPTS.oil_painting);
+  });
+
+  it('buildRestyleWithRecipe returns workflow and recipe', () => {
+    const { workflow, recipe } = buildRestyleWithRecipe({
+      image: 'input.png',
+      style: 'anime',
+      seed: 999,
+    });
+    expect(workflow['4'].inputs.text).toBe(STYLE_PROMPTS.anime);
+    expect(recipe.prompt).toBe(STYLE_PROMPTS.anime);
+    expect(recipe.image).toBe('input.png');
+    expect(recipe.denoise).toBe(0.65);
+    expect(recipe.seed).toBe(999);
+  });
+
+  it('buildFromTemplate("img2img", params) denoise and seed in KSampler', () => {
+    const workflow = buildFromTemplate('img2img', { denoise: 0.5, seed: 123 });
     expect(workflow['6'].inputs).toMatchObject({ denoise: 0.5, seed: 123 });
   });
 

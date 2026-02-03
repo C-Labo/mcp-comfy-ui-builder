@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import sharp from 'sharp';
 
 const mockGetHistory = vi.fn();
 const mockFetchOutputByFilename = vi.fn();
@@ -145,5 +146,77 @@ describe('downloadByFilename', () => {
     expect(mockFetchOutputByFilename).toHaveBeenCalledWith('mcp-comfy-preview_00001_.png', {
       type: 'output',
     });
+  });
+
+  it('converts to webp when output_format is webp and writes correct file', async () => {
+    const pngBuffer = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#f00' } })
+      .png()
+      .toBuffer();
+    mockFetchOutputByFilename.mockResolvedValueOnce(pngBuffer.buffer);
+    const { downloadByFilename } = await import('../src/output-manager.js');
+    const destPath = join(tmpDir, 'out.png');
+    const result = await downloadByFilename('ComfyUI_00001_.png', destPath, {
+      type: 'output',
+      output_format: 'webp',
+    });
+    expect('path' in result).toBe(true);
+    if ('path' in result) {
+      expect(result.path).toBe(join(tmpDir, 'out.webp'));
+      expect(result.size).toBeGreaterThan(0);
+      const written = readFileSync(result.path);
+      expect(written.slice(0, 4).toString('ascii')).toBe('RIFF');
+      expect(written.slice(8, 12).toString('ascii')).toBe('WEBP');
+    }
+  });
+
+  it('converts to jpeg when output_format is jpeg', async () => {
+    const pngBuffer = await sharp({ create: { width: 2, height: 2, channels: 3, background: '#00f' } })
+      .png()
+      .toBuffer();
+    mockFetchOutputByFilename.mockResolvedValueOnce(pngBuffer.buffer);
+    const { downloadByFilename } = await import('../src/output-manager.js');
+    const destPath = join(tmpDir, 'result.png');
+    const result = await downloadByFilename('out.png', destPath, {
+      output_format: 'jpeg',
+    });
+    expect('path' in result).toBe(true);
+    if ('path' in result) {
+      expect(result.path).toBe(join(tmpDir, 'result.jpg'));
+      const written = readFileSync(result.path);
+      expect(written[0]).toBe(0xff);
+      expect(written[1]).toBe(0xd8);
+    }
+  });
+
+  it('returns base64 with output_format webp (mime and filename)', async () => {
+    const pngBuffer = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#0f0' } })
+      .png()
+      .toBuffer();
+    mockFetchOutputByFilename.mockResolvedValueOnce(pngBuffer.buffer);
+    const { downloadByFilename } = await import('../src/output-manager.js');
+    const result = await downloadByFilename('x.png', join(tmpDir, 'x.png'), {
+      returnBase64: true,
+      output_format: 'webp',
+    });
+    expect('encoding' in result).toBe(true);
+    if ('encoding' in result && result.encoding === 'base64') {
+      expect(result.filename).toMatch(/\.webp$/);
+      expect(result.mime).toBe('image/webp');
+      expect(result.converted).toBe(true);
+      expect(result.original_size).toBe(pngBuffer.length);
+      expect(Buffer.from(result.data, 'base64').slice(0, 4).toString('ascii')).toBe('RIFF');
+    }
+  });
+
+  it('appends extension when dest_path has no image extension and output_format is set', async () => {
+    const pngBuffer = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#000' } })
+      .png()
+      .toBuffer();
+    mockFetchOutputByFilename.mockResolvedValueOnce(pngBuffer.buffer);
+    const { downloadByFilename } = await import('../src/output-manager.js');
+    const destPath = join(tmpDir, 'noext');
+    const result = await downloadByFilename('a.png', destPath, { output_format: 'webp' });
+    expect('path' in result).toBe(true);
+    if ('path' in result) expect(result.path).toBe(join(tmpDir, 'noext.webp'));
   });
 });

@@ -30,6 +30,21 @@ export type Img2ImgParams = {
   denoise?: number;
 };
 
+/** Params for restyle template: image + style (keyword or free prompt). Returns workflow with prompt/settings for regeneration. */
+export type RestyleParams = {
+  image?: string;
+  /** Style: keyword (cartoon, oil_painting, anime, watercolor, sketch, comic, pixel_art) or free text used as prompt. */
+  style?: string;
+  prompt?: string;
+  negative_prompt?: string;
+  denoise?: number;
+  steps?: number;
+  cfg?: number;
+  seed?: number;
+  ckpt_name?: string;
+  filename_prefix?: string;
+};
+
 /** Params for image_caption template (requires custom node e.g. ComfyUI-Blip or comfyui-art-venture). */
 export type ImageCaptionParams = {
   image?: string;
@@ -165,6 +180,22 @@ const DEFAULT_IMG2IMG = {
   denoise: 0.75,
 };
 
+/** Default denoise for restyle (stronger style change than generic img2img). */
+const DEFAULT_RESTYLE_DENOISE = 0.65;
+
+/** Predefined style keywords → positive prompt. User can pass free text as style instead. */
+export const STYLE_PROMPTS: Record<string, string> = {
+  cartoon: 'cartoon style, animated, colorful, clean lines, illustration',
+  oil_painting: 'oil painting style, brushstrokes, canvas texture, fine art',
+  anime: 'anime style, Japanese animation, cel shaded, vibrant',
+  watercolor: 'watercolor painting, soft edges, paper texture, artistic',
+  sketch: 'pencil sketch, hand drawn, monochrome, detailed linework',
+  comic: 'comic book style, bold outlines, halftone, pop art',
+  pixel_art: 'pixel art, 8-bit style, retro game aesthetic',
+  pastel: 'soft pastel style, dreamy, light colors, gentle',
+  cyberpunk: 'cyberpunk style, neon lights, futuristic, sci-fi',
+};
+
 const DEFAULT_INPAINTING = {
   image: 'input.png',
   mask: 'mask.png',
@@ -221,6 +252,73 @@ const DEFAULT_CONTROLNET = {
   ckpt_name: 'sd_xl_base_1.0.safetensors',
   filename_prefix: 'ComfyUI_controlnet',
 };
+
+/**
+ * Resolve prompt for restyle: predefined style keyword or use style as free prompt.
+ */
+function resolveRestylePrompt(style: string | undefined, explicitPrompt: string | undefined): string {
+  if (explicitPrompt != null && explicitPrompt !== '') return explicitPrompt;
+  if (style == null || style === '') return '';
+  const key = style.toLowerCase().replace(/\s+/g, '_').trim();
+  return STYLE_PROMPTS[key] ?? style;
+}
+
+/**
+ * Build restyle workflow: same as img2img with prompt derived from style (cartoon, oil_painting, etc.) or free text.
+ * Returns workflow + recipe (prompt, params) so the user can regenerate or tweak.
+ */
+export function buildRestyle(params: RestyleParams): ComfyUIWorkflow {
+  const p = { ...DEFAULT_IMG2IMG, ...params };
+  const prompt = resolveRestylePrompt(p.style, p.prompt);
+  const denoise = params.denoise !== undefined ? params.denoise : DEFAULT_RESTYLE_DENOISE;
+  return buildImg2Img({
+    image: p.image,
+    prompt,
+    negative_prompt: p.negative_prompt,
+    denoise,
+    steps: p.steps,
+    cfg: p.cfg,
+    seed: p.seed,
+    ckpt_name: p.ckpt_name,
+    filename_prefix: p.filename_prefix,
+  });
+}
+
+/**
+ * Build restyle workflow and return workflow + recipe (prompt and params used) for regeneration.
+ */
+export function buildRestyleWithRecipe(params: RestyleParams): {
+  workflow: ComfyUIWorkflow;
+  recipe: { prompt: string; negative_prompt: string; denoise: number; steps: number; cfg: number; seed: number; ckpt_name: string; image: string };
+} {
+  const p = { ...DEFAULT_IMG2IMG, ...params };
+  const prompt = resolveRestylePrompt(p.style, p.prompt);
+  const denoise = params.denoise !== undefined ? params.denoise : DEFAULT_RESTYLE_DENOISE;
+  const workflow = buildImg2Img({
+    image: p.image,
+    prompt,
+    negative_prompt: p.negative_prompt,
+    denoise,
+    steps: p.steps,
+    cfg: p.cfg,
+    seed: p.seed,
+    ckpt_name: p.ckpt_name,
+    filename_prefix: p.filename_prefix,
+  });
+  return {
+    workflow,
+    recipe: {
+      prompt,
+      negative_prompt: p.negative_prompt ?? '',
+      denoise,
+      steps: p.steps ?? DEFAULT_IMG2IMG.steps,
+      cfg: p.cfg ?? DEFAULT_IMG2IMG.cfg,
+      seed: p.seed ?? DEFAULT_IMG2IMG.seed,
+      ckpt_name: p.ckpt_name ?? DEFAULT_IMG2IMG.ckpt_name,
+      image: p.image ?? DEFAULT_IMG2IMG.image!,
+    },
+  };
+}
 
 /**
  * Build img2img workflow: LoadImage → VAEEncode → CheckpointLoaderSimple → CLIPTextEncode (pos/neg) → KSampler → VAEDecode → SaveImage.
@@ -684,6 +782,7 @@ const TEMPLATES: Record<string, (params: Record<string, unknown>) => ComfyUIWork
   txt2img: (params) => buildTxt2Img(params as Txt2ImgParams),
   txt2img_flux: (params) => buildTxt2ImgFlux(params as Txt2ImgFluxParams),
   img2img: (params) => buildImg2Img(params as Img2ImgParams),
+  restyle: (params) => buildRestyle(params as RestyleParams),
   image_caption: (params) => buildImageCaption(params as ImageCaptionParams),
   inpainting: (params) => buildInpainting(params as InpaintingParams),
   upscale: (params) => buildUpscale(params as UpscaleParams),
