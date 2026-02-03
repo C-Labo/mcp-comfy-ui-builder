@@ -171,4 +171,4 @@ MCP also syncs on startup when ComfyUI is available.
 
 ***
 
-*Getting Started v2.2.0 - get_system_resources, sync on MCP startup* | *2026-02-03*
+*Getting Started v2.2.1 - get_system_resources, sync on MCP startup* | *2026-02-03*

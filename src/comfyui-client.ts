@@ -367,7 +367,7 @@ function isHistoryEntryFinal(entry: HistoryEntry): boolean {
   const hasError = Boolean(statusObj?.messages?.length);
   if (hasError) return true;
   if (statusStr && FINAL_STATUS_STRINGS.includes(statusStr)) return true;
-  const hasOutputs = entry.outputs && Object.keys(entry.outputs).length > 0;
+  const hasOutputs = Boolean(entry.outputs && Object.keys(entry.outputs).length > 0);
   return hasOutputs;
 }
 
@@ -392,12 +392,17 @@ export async function submitPromptAndWait(
       }
       const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
       const messages = statusObj?.messages ?? [];
-      const hasError = Boolean(messages?.length);
+      const statusStr = statusObj?.status_str?.toLowerCase();
+      // Treat status_str 'error' or 'canceled' as failure even when messages is empty (ComfyUI may not populate messages).
+      const hasError = statusStr === 'error' || statusStr === 'canceled' || Boolean(messages?.length);
+      const errorDetail = hasError
+        ? (messages?.length ? String(messages[0]) : statusStr === 'error' ? 'Execution failed (see get_execution_status for details)' : 'Canceled')
+        : undefined;
       return {
         prompt_id,
         status: hasError ? 'failed' : 'completed',
         outputs: entry.outputs,
-        error: hasError ? String(messages?.[0]) : undefined,
+        error: errorDetail,
       };
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -560,12 +565,16 @@ async function waitWithPolling(promptId: string, timeoutMs: number): Promise<Exe
       }
       const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
       const messages = statusObj?.messages ?? [];
-      const hasError = Boolean(messages?.length);
+      const statusStr = statusObj?.status_str?.toLowerCase();
+      const hasError = statusStr === 'error' || statusStr === 'canceled' || Boolean(messages?.length);
+      const errorDetail = hasError
+        ? (messages?.length ? String(messages[0]) : statusStr === 'error' ? 'Execution failed (see get_execution_status for details)' : 'Canceled')
+        : undefined;
       return {
         prompt_id: promptId,
         status: hasError ? 'failed' : 'completed',
         outputs: entry.outputs,
-        error: hasError ? String(messages?.[0]) : undefined,
+        error: errorDetail,
       };
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));

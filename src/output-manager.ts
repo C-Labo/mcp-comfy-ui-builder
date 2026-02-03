@@ -42,7 +42,7 @@ function isHistoryEntryFinal(entry: HistoryEntry): boolean {
   const hasError = Boolean(statusObj?.messages?.length);
   if (hasError) return true;
   if (statusStr && FINAL_STATUS_STRINGS.includes(statusStr)) return true;
-  const hasOutputs = entry.outputs && Object.keys(entry.outputs).length > 0;
+  const hasOutputs = Boolean(entry.outputs && Object.keys(entry.outputs).length > 0);
   return hasOutputs;
 }
 
@@ -174,10 +174,21 @@ export async function downloadByFilename(
   }
 
   const dir = dirname(destPath);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+  try {
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(destPath, buffer);
+  } catch (err) {
+    const e = err as NodeJS.ErrnoException;
+    if (e?.code === 'ENOENT' || e?.code === 'EACCES') {
+      throw new Error(
+        `${e.code}: ${e.message}. dest_path is resolved on the machine where the MCP server runs. ` +
+          'If the server runs in a different environment (e.g. host vs container), use return_base64: true and save the file on the client side.'
+      );
+    }
+    throw err;
   }
-  writeFileSync(destPath, buffer);
   return { path: destPath, size: buffer.length };
 }
 

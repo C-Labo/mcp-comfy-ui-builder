@@ -823,10 +823,11 @@ server.registerTool(
             }
           : undefined
       );
-      const isWebSocket = await comfyui.isWebSocketAvailable();
-      const output = {
-        ...result,
-        progress_method: isWebSocket ? 'websocket' : 'polling',
+      const output: Record<string, unknown> = {
+        prompt_id: result.prompt_id,
+        status: result.status === 'failed' ? 'error' : result.status,
+        ...(result.outputs != null && { outputs: result.outputs }),
+        ...(result.error != null && { error: result.error }),
         ...(progressUpdates.length > 0 && { progress_log: progressUpdates }),
       };
       return { content: [{ type: 'text', text: JSON.stringify(output, null, 2) }] };
@@ -874,9 +875,25 @@ server.registerTool(
       }
       const entry = entries[0];
       const outputs = entry.outputs ?? {};
+      const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
+      const statusStr = statusObj?.status_str;
+      const messages = statusObj?.messages ?? [];
       const lines: string[] = [`prompt_id: ${args.prompt_id}`];
-      const statusStr = (entry.status as { status_str?: string })?.status_str;
       if (statusStr) lines.push(`status: ${statusStr}`);
+      if (messages.length > 0) {
+        lines.push('errors:');
+        for (const m of messages) {
+          if (m && typeof m === 'object' && 'node_id' in m) {
+            const msg = m as { node_id?: string; exception_message?: string; exception_type?: string; traceback?: string[] };
+            lines.push(`  node ${msg.node_id ?? '?'}: [${msg.exception_type ?? 'Error'}] ${msg.exception_message ?? String(m)}`);
+            if (Array.isArray(msg.traceback) && msg.traceback.length > 0) {
+              msg.traceback.slice(0, 5).forEach((t) => lines.push(`    ${t}`));
+            }
+          } else {
+            lines.push(`  ${String(m)}`);
+          }
+        }
+      }
       for (const [nodeId, out] of Object.entries(outputs)) {
         const nodeOut = out as { images?: Array<{ filename: string; subfolder?: string }>; text?: string[]; string?: string[] };
         const images = nodeOut.images;
@@ -1119,7 +1136,7 @@ server.registerTool(
   'get_last_output',
   {
     description:
-      'Get info for the most recent completed prompt output (first image). Use when prompt_id was lost (e.g. execute_workflow_sync timed out). Returns prompt_id, filename, subfolder, view_url. Then use download_by_filename to save the file. Requires COMFYUI_HOST.',
+      'Get info for the most recent prompt that has image output (skips failed prompts). Use when prompt_id was lost (e.g. execute_workflow_sync timed out). Returns prompt_id, filename, subfolder, view_url. Then use download_by_filename to save the file. Requires COMFYUI_HOST.',
     inputSchema: {},
   },
   async () => {
@@ -1129,25 +1146,33 @@ server.registerTool(
     try {
       const entries = await comfyui.getHistory();
       if (entries.length === 0) {
-        return { content: [{ type: 'text', text: 'No completed prompts in history.' }] };
+        return { content: [{ type: 'text', text: 'No prompts in history.' }] };
       }
-      const entry = entries[0];
-      const promptId = entry.prompt_id ?? '(unknown)';
-      const ref = comfyui.getFirstOutputImageRef([entry]);
-      if (!ref) {
+      // Entries are newest first. Return first (newest) that has image output (skip failed prompts).
+      let ref: { filename: string; subfolder?: string; type?: string } | null = null;
+      let chosenEntry: (typeof entries)[0] | null = null;
+      for (const entry of entries) {
+        const r = comfyui.getFirstOutputImageRef([entry]);
+        if (r) {
+          ref = r;
+          chosenEntry = entry;
+          break;
+        }
+      }
+      if (!ref || !chosenEntry) {
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
-                prompt_id: promptId,
-                message: 'Latest prompt has no image output.',
-                outputs: entry.outputs,
+                message: 'No prompt in history has image output (all failed or no images).',
+                latest_prompt_id: entries[0]?.prompt_id ?? null,
               }),
             },
           ],
         };
       }
+      const promptId = chosenEntry.prompt_id ?? '(unknown)';
       const base = process.env.COMFYUI_HOST?.replace(/\/$/, '') ?? 'http://127.0.0.1:8188';
       const params = new URLSearchParams({
         filename: ref.filename,

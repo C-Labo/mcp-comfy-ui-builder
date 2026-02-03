@@ -188,6 +188,24 @@ describe('ComfyUI client', () => {
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/history/p1'), expect.any(Object));
   });
 
+  it('submitPromptAndWait returns failed when history has status_str error and empty messages', async () => {
+    const { submitPromptAndWait } = await import('../src/comfyui-client.js');
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ prompt_id: 'p-error' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { prompt_id: 'p-error', outputs: {}, status: { status_str: 'error', messages: [] } },
+        ],
+      });
+    const workflow = { '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } };
+    const result = await submitPromptAndWait(workflow, 5000);
+    expect(result.prompt_id).toBe('p-error');
+    expect(result.status).toBe('failed');
+    expect(result.outputs).toEqual({});
+    expect(result.error).toContain('Execution failed');
+  });
+
   it('submitPromptAndWait does not return completed when history has status running and no outputs', async () => {
     const { submitPromptAndWait } = await import('../src/comfyui-client.js');
     mockFetch

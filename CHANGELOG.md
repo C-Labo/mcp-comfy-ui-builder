@@ -8,6 +8,26 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.2.1] – 2026-02-03
+
+### Fixed (Claude Desktop MCP feedback)
+
+- **execute_workflow_sync returned completed when job actually failed:** Polling now treats `status_str: 'error'` or `'canceled'` as failure even when ComfyUI leaves `messages` empty. Result status is `failed` (MCP response uses `status: 'error'`) with error details. [src/comfyui-client.ts](src/comfyui-client.ts) — `submitPromptAndWait()`, `waitWithPolling()`.
+- **download_by_filename ENOENT when dest dir exists:** Clearer error on ENOENT/EACCES: explains that `dest_path` is resolved on the MCP server host and suggests `return_base64: true` when server runs in a different environment (e.g. host vs container). [src/output-manager.ts](src/output-manager.ts).
+- **get_execution_status had no error details:** Now parses ComfyUI history `status.messages` and surfaces node-level errors: `node_id`, `exception_type`, `exception_message`, and first lines of `traceback`. [src/mcp-server.ts](src/mcp-server.ts).
+- **get_last_output returned older successful prompt:** Now returns the most recent prompt that has image output (skips failed prompts). Description updated to "most recent prompt that has image output (skips failed prompts)". [src/mcp-server.ts](src/mcp-server.ts).
+- **execute_workflow_sync:** Response uses `status: 'error'` when execution failed (was `failed`); removed `progress_method` from response; `progress_log` still included when streaming. [src/mcp-server.ts](src/mcp-server.ts).
+
+### Fixed (build/CI)
+
+- **TypeScript build (CI release):** `isHistoryEntryFinal` return type — use `Boolean()` for `hasOutputs` in [src/comfyui-client.ts](src/comfyui-client.ts) and [src/output-manager.ts](src/output-manager.ts) so return type is `boolean` (fixes TS2322).
+
+### Tests
+
+- **comfyui-client.test.ts:** Test that `submitPromptAndWait` returns `status: 'failed'` when history has `status_str: 'error'` and empty `messages`.
+
+---
+
 ## [2.2.0] – 2026-02-03
 
 ### Fixed (live findings: race conditions, remote download, OOM, interrupt)
