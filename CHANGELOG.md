@@ -6,6 +6,26 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ## [Unreleased]
 
+## [2.4.0] – 2026-02-03
+
+### Added (output format, restyle workflow)
+
+- **output_format for downloads:** `download_by_filename` and `download_output` accept optional **output_format** (png, jpeg, webp). Images are converted server-side with sharp before saving or returning base64. Optional **convert_quality** for jpeg/webp. [src/output-manager.ts](src/output-manager.ts), [src/mcp-server.ts](src/mcp-server.ts).
+- **restyle template:** New template **restyle** — image-to-image in a chosen style (cartoon, oil_painting, anime, watercolor, sketch, comic, pixel_art, pastel, cyberpunk or free text). Same pipeline as img2img; style maps to prompt; default denoise 0.65. [src/workflow/workflow-builder.ts](src/workflow/workflow-builder.ts).
+- **build_restyle_workflow:** New tool returns workflow JSON plus **recipe** (prompt, denoise, steps, cfg, seed, ckpt_name, image) so the user can run or regenerate with the same settings. [src/mcp-server.ts](src/mcp-server.ts).
+
+### Changed (docs)
+
+- **doc/workflow-builder.md:** Section for restyle template and build_restyle_workflow.
+- **doc/MCP-SETUP.md:** list_templates includes restyle; build_restyle_workflow in tools table.
+
+### Tests
+
+- **output-manager.test.ts:** output_format webp/jpeg (file and base64), dest path extension when no image ext.
+- **workflow-builder.test.ts:** restyle template, buildRestyleWithRecipe, STYLE_PROMPTS.
+
+---
+
 ## [2.3.1] – 2026-02-03
 
 ### Fixed (REPORT-MCP-SERVER-USAGE, status vs outputs)
