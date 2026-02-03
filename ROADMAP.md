@@ -4,7 +4,7 @@
 
 ---
 
-## Current: v1.1.3
+## Current: v2.0.0
 
 - **50+ MCP tools** across 9 categories
 - **8 workflow templates** (txt2img, img2img, inpainting, upscale, lora, controlnet, batch, image_caption)
@@ -24,6 +24,7 @@
 - **v0.4.0** — Composition (templates, macros, chain), plugin system
 - **v0.5.0** — WebSocket real-time execution
 - **v1.1.x** — MCP setup docs, Python/venv fix for install_custom_node, COMFYUI_KNOWLEDGE_DIR
+- **v2.0.0** — get_system_resources, resource analyzer, AI flow: check resources → build → execute
 
 Details → [CHANGELOG.md](CHANGELOG.md).
 

@@ -41,6 +41,7 @@ import { listMacros, getMacro, insertMacro as insertMacroIntoContext, registerPl
 import { executeChain } from './workflow/chainer.js';
 import type { ComfyUIWorkflow } from './types/comfyui-api-types.js';
 import { loadPlugins, summarizePlugins, type LoadedPlugin } from './plugins/plugin-loader.js';
+import { analyzeSystemResources } from './resource-analyzer.js';
 
 const KNOWLEDGE_DIR = process.env.COMFYUI_KNOWLEDGE_DIR?.trim() || join(process.cwd(), 'knowledge');
 const BASE_NODES_PATH = join(KNOWLEDGE_DIR, 'base-nodes.json');
@@ -128,7 +129,7 @@ function initPlugins(): void {
 }
 
 const server = new McpServer(
-  { name: 'mcp-comfy-ui-builder', version: '0.1.0' },
+  { name: 'mcp-comfy-ui-builder', version: '2.0.0' },
   { capabilities: { tools: {} } }
 );
 
@@ -1196,6 +1197,36 @@ server.registerTool(
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `check_workflow_models failed: ${msg}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  'get_system_resources',
+  {
+    description:
+      'Get ComfyUI station resources (GPU/VRAM/RAM) and recommendations for model size, resolution, and batch size. Call this first before building or executing workflows to avoid OOM. Requires COMFYUI_HOST.',
+    inputSchema: {},
+  },
+  async () => {
+    if (!comfyui.isComfyUIConfigured()) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: 'ComfyUI is not configured. Set COMFYUI_HOST to use get_system_resources.',
+          },
+        ],
+      };
+    }
+    try {
+      const stats = await comfyui.getSystemStats();
+      const rec = analyzeSystemResources(stats);
+      const text = JSON.stringify(rec, null, 2);
+      return { content: [{ type: 'text', text }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { content: [{ type: 'text', text: `get_system_resources failed: ${msg}` }] };
     }
   }
 );

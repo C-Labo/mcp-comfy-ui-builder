@@ -2,7 +2,7 @@
 
 > MCP server for ComfyUI workflow building and execution
 
-**Current:** v1.1.3. Full workflow lifecycle and IMPROVEMENT-PLAN Phases 1–9 done (templates, dynamic builder, discovery, WebSocket execution, models, composition, Docker, Knowledge expansion).  
+**Current:** v2.0.0. Full workflow lifecycle and IMPROVEMENT-PLAN Phases 1–9 done (templates, dynamic builder, discovery, WebSocket execution, models, composition, Docker, Knowledge expansion).  
 **Next:** Phase 10 (QoL) — [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md).
 
 ---

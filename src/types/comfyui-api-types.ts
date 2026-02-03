@@ -174,3 +174,29 @@ export interface ExecutionProgress {
     type: string;
   };
 }
+
+/** GET /system_stats response (ComfyUI server.py). Values in bytes. */
+export interface SystemStatsDevice {
+  name: string;
+  type?: string;
+  index?: number;
+  vram_total: number;
+  vram_free: number;
+  torch_vram_total?: number;
+  torch_vram_free?: number;
+}
+
+export interface SystemStatsSystem {
+  os?: string;
+  ram_total: number;
+  ram_free: number;
+  comfyui_version?: string;
+  python_version?: string;
+  pytorch_version?: string;
+  [key: string]: unknown;
+}
+
+export interface SystemStatsResponse {
+  system: SystemStatsSystem;
+  devices: SystemStatsDevice[];
+}

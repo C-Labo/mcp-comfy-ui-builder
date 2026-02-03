@@ -147,7 +147,7 @@ export function restartComfyUI(options: RestartComfyUIOptions = {}): RestartComf
       message: `main.py not found at ${mainPy}. Check COMFYUI_PATH.`,
     };
   }
-  const { port } = getComfyHostPort();
+  const { port, baseUrl } = getComfyHostPort();
 
   const killResult = killProcessOnPort(port);
   if (killResult.error && killResult.killed === 0) {
@@ -179,7 +179,7 @@ export function restartComfyUI(options: RestartComfyUIOptions = {}): RestartComf
 }
 
 /** Restart ComfyUI asynchronously; returns a Promise that resolves when ready (or timeout). Use this to reload custom nodes. */
-export function restartComfyUIAsync(
+export async function restartComfyUIAsync(
   options: RestartComfyUIOptions = {}
 ): Promise<RestartComfyUIResult> {
   const base = getComfyPath();

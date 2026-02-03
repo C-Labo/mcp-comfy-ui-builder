@@ -34,6 +34,8 @@
    export COMFYUI_HOST="http://localhost:8188"
    ```
 
+5. **Before generation:** AI assistants should call **`get_system_resources`** first. It returns GPU/VRAM/RAM and recommendations (max resolution, model size, batch size). Use these to build workflows that avoid out-of-memory (OOM) on the station. See [AI-ASSISTANT-GUIDE.md](AI-ASSISTANT-GUIDE.md).
+
 ***
 
 ## Real-Time Execution (v0.5.0+)
@@ -169,4 +171,4 @@ MCP also syncs on startup when ComfyUI is available.
 
 ***
 
-*Getting Started v1.4.0 - sync-nodes, sync on MCP startup* | *2026-02-02*
+*Getting Started v2.0.0 - get_system_resources, sync on MCP startup* | *2026-02-03*

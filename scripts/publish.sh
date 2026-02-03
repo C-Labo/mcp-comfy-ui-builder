@@ -38,6 +38,8 @@ echo "--- npm publish ---"
 npm publish
 
 echo "--- MCP Registry ---"
+
+mcp-publisher login github
 mcp-publisher publish
 
 echo "--- docker tag & push ---"

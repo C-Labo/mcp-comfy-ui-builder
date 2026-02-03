@@ -2,17 +2,18 @@
 
 > Workflow Builder for ComfyUI — MCP server, knowledge base, execution
 
-**Status:** v1.1.3. Core + IMPROVEMENT-PLAN Phases 1–9 done. Details → [CHANGELOG.md](CHANGELOG.md), [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md).
+**Status:** v2.0.0. Core + IMPROVEMENT-PLAN Phases 1–9 done. Details → [CHANGELOG.md](CHANGELOG.md), [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md).
 
 ---
 
-## Completed (v0.1.0 – v1.1.3)
+## Completed (v0.1.0 – v2.0.0)
 
 - **Phases 1–8** — Core MCP, workflow builder, templates, dynamic builder, discovery, execution (WebSocket), models, composition
 - **Phase 7** — Docker: image `siniidrozd/mcp-comfy-ui-builder`, CI build
 - **Phase 8** — WebSocket real-time execution
 - **Phase 9** — Knowledge: 62 seed nodes, sync-nodes, sync on MCP startup
 - **v1.1.x** — MCP setup docs, Python/venv fix for install_custom_node, COMFYUI_KNOWLEDGE_DIR
+- **v2.0.0** — get_system_resources (GPU/VRAM/RAM + recommendations), resource analyzer, manager-cli fixes
 
 **Current:** 50+ MCP tools, 8 templates, dynamic builder, batch/chain (WebSocket), model management, plugins, 62 seed nodes (100–600+ after sync-nodes). CLI: seed, sync-manager, sync-nodes.
 

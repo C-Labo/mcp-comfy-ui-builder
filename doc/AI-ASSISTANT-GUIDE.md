@@ -4,6 +4,18 @@
 
 ---
 
+## Before building workflows: check resources first
+
+**Models for generation can be very resource-intensive.** Before building or executing any workflow that uses checkpoints/LoRA/VAE, **call `get_system_resources` first**. Use its output to choose:
+
+- **Resolution** (width/height): do not exceed `max_width` / `max_height` from the recommendations.
+- **Model size**: prefer `suggested_model_size` (light / medium / heavy) and pick a checkpoint that matches (e.g. SD 1.5 for light, SD XL for heavy only when tier is high or very_high).
+- **Batch size**: do not exceed `max_batch_size`.
+
+Then build the workflow (e.g. via `build_workflow` or dynamic builder) with these limits. This reduces the risk of out-of-memory (OOM) errors on the user’s station.
+
+---
+
 ## What it is
 
 **mcp-comfy-ui-builder** is an MCP server for ComfyUI: it lets you discover nodes, build workflows (templates or dynamic), save/load them, run them on ComfyUI, and manage outputs and models. The user may have installed the package globally: `npm i -g mcp-comfy-ui-builder`. Full tool list by area: [MCP-SETUP.md](MCP-SETUP.md).
@@ -39,6 +51,7 @@
 
 | Tool | When to use | ComfyUI needed? |
 |------|-------------|------------------|
+| **get_system_resources** | **Call first** before building/executing workflows: returns GPU/VRAM/RAM and recommendations (max resolution, model size, batch size). Use to avoid OOM. | Yes (COMFYUI_HOST) |
 | **list_templates** | List available templates (txt2img, img2img) | No |
 | **list_node_types** | List nodes from the knowledge base (optional: category, priority) | No |
 | **get_node_info** | Full info about a node by class name | No |
@@ -61,6 +74,7 @@
 **Execution:** execute_workflow_sync (submit and wait), get_execution_progress, execute_batch, execute_chain (Yes).  
 **Outputs:** list_outputs, download_output, download_all_outputs (Yes).  
 **Models:** list_models, get_model_info, check_model_exists, get_workflow_models, check_workflow_models (Yes).  
+**Resources:** get_system_resources — GPU/VRAM/RAM + recommendations; call before building workflows (Yes).  
 **Templates/macros:** create_template, apply_template, validate_template_params, list_macros, insert_macro (no ComfyUI for create/apply/list/insert).  
 **Plugins:** list_plugins, reload_plugins (manage macros/templates from `plugins/*/plugin.json`).  
 **Utility:** prepare_image_for_workflow (copy image into ComfyUI input folder; ComfyUI path needed if different from default).
@@ -71,16 +85,24 @@ For any tool that needs ComfyUI, **COMFYUI_HOST** must be set (default `http://1
 
 ## Typical scenarios
 
+**Run a workflow on ComfyUI (generation) — recommended order:**
+1. **`get_system_resources`** — get GPU/VRAM/RAM and recommendations (max_width, max_height, suggested_model_size, max_batch_size).
+2. `list_templates` — confirm template (e.g. txt2img) is available.
+3. `build_workflow` with params that **respect** the recommendations (width ≤ max_width, height ≤ max_height, batch_size ≤ max_batch_size; choose checkpoint by suggested_model_size).
+4. Optionally `check_workflow_models(workflow)` — ensure required models exist.
+5. `execute_workflow(workflow)` or `execute_workflow_sync(workflow)`.
+
 **Build txt2img and get JSON (without running ComfyUI):**
 1. `list_templates` — confirm txt2img is available.
-2. `build_workflow` with template `txt2img` and params (e.g. width, height, prompt, steps, seed). Result: workflow JSON.
+2. `build_workflow` with template `txt2img` and params (e.g. width, height, prompt, steps, seed). Result: workflow JSON.  
+   If you will run this later on ComfyUI, call `get_system_resources` first and cap width/height/batch_size by its recommendations.
 
 **Save and later load a workflow:**
 1. After `build_workflow` — `save_workflow(name, workflow)` (workflow is the JSON string from build_workflow).
 2. Later — `list_saved_workflows`, then `load_workflow(name_or_path)` to get the JSON.
 
-**Run a workflow on ComfyUI:**
-1. Get workflow JSON: via `build_workflow` or `load_workflow`.
+**Run a workflow on ComfyUI (short):**
+1. Get workflow JSON: via `build_workflow` or `load_workflow` (params should respect `get_system_resources` if generation).
 2. `execute_workflow(workflow)` — pass the JSON **string**. You get prompt_id.
 3. `get_execution_status(prompt_id)` — check status and outputs (images, view URLs).
 4. Optionally — `list_queue` for the queue.

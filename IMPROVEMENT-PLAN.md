@@ -4,7 +4,7 @@ Future improvements. Completed phases → [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
-## Current state (v1.1.3)
+## Current state (v2.0.0)
 
 | Component | Current |
 |-----------|---------|

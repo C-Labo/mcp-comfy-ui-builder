@@ -8,6 +8,24 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.0.0] – 2026-02-03
+
+### Added
+
+- **get_system_resources (MCP tool):** Fetches ComfyUI `/system_stats` (GPU/VRAM/RAM) and returns recommendations (max_width, max_height, suggested_model_size, max_batch_size) to avoid OOM. AI assistants should call this first before building or executing workflows. [src/comfyui-client.ts](src/comfyui-client.ts) — `getSystemStats()`, [src/resource-analyzer.ts](src/resource-analyzer.ts), [src/mcp-server.ts](src/mcp-server.ts).
+- **Resource analyzer:** Interprets VRAM tiers (low/medium/high/very_high) and suggests resolution, model size (light/medium/heavy), and batch limits. [src/resource-analyzer.ts](src/resource-analyzer.ts), [tests/resource-analyzer.test.ts](tests/resource-analyzer.test.ts).
+- **Types:** `SystemStatsResponse`, `SystemStatsDevice`, `SystemStatsSystem` in [src/types/comfyui-api-types.ts](src/types/comfyui-api-types.ts).
+
+### Changed
+
+- **Documentation:** [doc/AI-ASSISTANT-GUIDE.md](doc/AI-ASSISTANT-GUIDE.md) — "Before building workflows: check resources first"; [doc/GETTING-STARTED.md](doc/GETTING-STARTED.md), [doc/MCP-SETUP.md](doc/MCP-SETUP.md), [README.md](README.md) — get_system_resources and resource-check workflow. AI flow: call get_system_resources → build workflow within recommendations → execute.
+
+### Fixed
+
+- **manager-cli.ts:** `restartComfyUI` — use `baseUrl` from `getComfyHostPort()` in error message (was undefined). `restartComfyUIAsync` — declare as `async` so `await` is valid.
+
+---
+
 ## [1.1.5] – 2026-02-03
 
 ### Added

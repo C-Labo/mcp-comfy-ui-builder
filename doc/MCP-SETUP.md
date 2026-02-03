@@ -75,10 +75,11 @@ Tools are grouped by area. **COMFYUI_HOST** is required for execution/queue/outp
 | **download_output(prompt_id, node_id, filename, dest_path)** | Download a single output file |
 | **download_all_outputs(prompt_id, dest_dir)** | Download all outputs for a prompt to a directory |
 
-### Model management (COMFYUI_HOST)
+### Resources & model management (COMFYUI_HOST)
 
 | Tool | Description |
 |------|------|
+| **get_system_resources** | Get station GPU/VRAM/RAM and recommendations (max_width, max_height, suggested_model_size, max_batch_size). **Call first** before building or executing workflows to avoid OOM. |
 | **list_models(model_type?)** | List models (checkpoint, lora, vae, controlnet, upscale, etc.) |
 | **get_model_info(name, model_type)** | Details for a model |
 | **check_model_exists(name, model_type)** | Whether the model is present |
@@ -300,4 +301,4 @@ See [WEBSOCKET-GUIDE.md](WEBSOCKET-GUIDE.md) for advanced usage.
 
 ***
 
-*MCP Setup v1.4 - Quick connection checklist, env examples, troubleshooting | 2026-02-02*
+*MCP Setup v2.0.0 - get_system_resources, env examples, troubleshooting* | *2026-02-03*

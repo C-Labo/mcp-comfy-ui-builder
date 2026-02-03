@@ -11,6 +11,7 @@ import type {
   QueueStatus,
   ObjectInfo,
   ExecutionResult,
+  SystemStatsResponse,
 } from './types/comfyui-api-types.js';
 
 const DEFAULT_HOST = 'http://127.0.0.1:8188';
@@ -107,6 +108,23 @@ export async function getObjectInfo(): Promise<ObjectInfo> {
   }
   const data = (await res.json()) as ObjectInfo;
   return data ?? {};
+}
+
+/**
+ * Get system stats (GPU/VRAM/RAM). GET /system_stats.
+ * Requires ComfyUI to be running. Values are in bytes.
+ */
+export async function getSystemStats(): Promise<SystemStatsResponse> {
+  const res = await fetchWithRetry('/system_stats', { method: 'GET' });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`ComfyUI /system_stats failed (${res.status}): ${text || res.statusText}`);
+  }
+  const data = (await res.json()) as SystemStatsResponse;
+  if (!data?.system || !Array.isArray(data.devices)) {
+    throw new Error('ComfyUI /system_stats returned invalid structure');
+  }
+  return data;
 }
 
 /**

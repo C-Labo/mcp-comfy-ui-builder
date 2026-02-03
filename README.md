@@ -62,7 +62,7 @@ Single entry point — **task-oriented navigation**:
 - **[doc/DOCKER-SETUP.md](doc/DOCKER-SETUP.md)** — `docker pull siniidrozd/mcp-comfy-ui-builder` | docker-compose for MCP + ComfyUI
 - **Knowledge base:** [knowledge/README.md](knowledge/README.md), [doc/knowledge-base-usage-guide.md](doc/knowledge-base-usage-guide.md)
 - **Workflow Builder:** [doc/workflow-builder.md](doc/workflow-builder.md) — templates, params, save/load, ComfyUI format
-- **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md) — current v1.1.x, next Phase 10 (QoL)
+- **Planning:** [ROADMAP.md](ROADMAP.md), [NEXT-STEPS.md](NEXT-STEPS.md), [TODO.md](TODO.md) — current v2.0.x, next Phase 10 (QoL)
 - **Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
 - **MCP Registry:** [server.json](server.json) and `mcpName` in package.json; see [MCP Registry quickstart](https://modelcontextprotocol.io/registry/quickstart) to publish after `npm publish`.
 
@@ -96,7 +96,8 @@ Server provides 50+ tools across 9 categories:
 - **execute_batch** — Concurrent execution with **90% reduced network traffic**
 - **execute_chain** — Sequential workflows with data passing
 
-**Model Management:**
+**Resources & Model Management:**
+- **get_system_resources** — GPU/VRAM/RAM + recommendations (max resolution, model size, batch size); **call first** before building workflows to avoid OOM
 - **list_models**, **check_model_exists**, **get_workflow_models**
 - Supports checkpoint, lora, vae, controlnet, upscale, embedding, clip
 
