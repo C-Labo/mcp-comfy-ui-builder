@@ -2,7 +2,7 @@
  * Resource analyzer: interpret ComfyUI system_stats (VRAM/RAM) and produce
  * recommendations for model size, resolution, and batch size to avoid OOM.
  */
-import type { SystemStatsResponse } from './types/comfyui-api-types.js';
+import type { SystemStatsResponse, ComfyUIWorkflow } from './types/comfyui-api-types.js';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -167,4 +167,23 @@ export function analyzeSystemResources(stats: SystemStatsResponse): ResourceReco
       ram_free_bytes: ramFree,
     },
   };
+}
+
+/**
+ * Extract max width/height from a ComfyUI workflow (e.g. EmptyLatentImage, or any node with width/height inputs).
+ * Returns the maximum dimensions found; null if none.
+ */
+export function getWorkflowResolution(workflow: ComfyUIWorkflow): { width: number; height: number } | null {
+  let maxW = 0;
+  let maxH = 0;
+  for (const node of Object.values(workflow)) {
+    const inputs = node?.inputs ?? {};
+    const w = typeof inputs.width === 'number' ? inputs.width : 0;
+    const h = typeof inputs.height === 'number' ? inputs.height : 0;
+    if (w > 0 && h > 0) {
+      if (w > maxW) maxW = w;
+      if (h > maxH) maxH = h;
+    }
+  }
+  return maxW > 0 && maxH > 0 ? { width: maxW, height: maxH } : null;
 }

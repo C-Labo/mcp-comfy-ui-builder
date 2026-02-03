@@ -188,6 +188,43 @@ describe('ComfyUI client', () => {
     expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('/history/p1'), expect.any(Object));
   });
 
+  it('submitPromptAndWait does not return completed when history has status running and no outputs', async () => {
+    const { submitPromptAndWait } = await import('../src/comfyui-client.js');
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ prompt_id: 'p-running' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { prompt_id: 'p-running', outputs: {}, status: { status_str: 'running' } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { prompt_id: 'p-running', outputs: {}, status: { status_str: 'running' } },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            prompt_id: 'p-running',
+            outputs: { '7': { images: [{ filename: 'out.png' }] } },
+            status: { status_str: 'success' },
+          },
+        ],
+      });
+    const workflow = { '1': { class_type: 'CheckpointLoaderSimple', inputs: {} } };
+    const result = await submitPromptAndWait(workflow, 10000);
+    expect(result.prompt_id).toBe('p-running');
+    expect(result.status).toBe('completed');
+    expect(result.outputs).toBeDefined();
+    const historyCalls = mockFetch.mock.calls.filter((c: unknown[]) =>
+      String(c[0]).includes('/history')
+    );
+    expect(historyCalls.length).toBeGreaterThanOrEqual(2);
+  });
+
   it('submitPrompt throws on non-ok response', async () => {
     const { submitPrompt } = await import('../src/comfyui-client.js');
     mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'Server error' });

@@ -33,10 +33,24 @@ function buildViewUrl(filename: string, subfolder?: string, type: string = 'outp
 const LIST_OUTPUTS_RETRY_DELAY_MS = 2000;
 const LIST_OUTPUTS_MAX_RETRIES = 3;
 
+/** ComfyUI history status_str values that mean execution is finished. */
+const FINAL_STATUS_STRINGS = ['success', 'finished', 'error', 'canceled', 'cached'];
+
+function isHistoryEntryFinal(entry: HistoryEntry): boolean {
+  const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
+  const statusStr = statusObj?.status_str?.toLowerCase();
+  const hasError = Boolean(statusObj?.messages?.length);
+  if (hasError) return true;
+  if (statusStr && FINAL_STATUS_STRINGS.includes(statusStr)) return true;
+  const hasOutputs = entry.outputs && Object.keys(entry.outputs).length > 0;
+  return hasOutputs;
+}
+
 /**
  * List all output files for a completed prompt (from GET /history).
  * If GET /history/{prompt_id} returns empty (e.g. fresh prompt), fallback to full history.
  * Retries up to LIST_OUTPUTS_MAX_RETRIES with delay — ComfyUI may need ~2s to write to history after completed.
+ * Throws if prompt is still running/pending so the caller can show a clear message instead of "No outputs".
  */
 export async function listOutputs(promptId: string): Promise<OutputFile[]> {
   const tryList = async (): Promise<OutputFile[]> => {
@@ -49,6 +63,16 @@ export async function listOutputs(promptId: string): Promise<OutputFile[]> {
     if (entries.length === 0) return [];
 
     const entry = entries[0];
+    const statusObj = entry.status as { status_str?: string } | undefined;
+    const statusStr = statusObj?.status_str?.toLowerCase();
+    const hasOutputs = entry.outputs && Object.keys(entry.outputs ?? {}).length > 0;
+
+    if (!hasOutputs && statusStr && !FINAL_STATUS_STRINGS.includes(statusStr)) {
+      throw new Error(
+        `Prompt ${promptId} is not completed yet (status: ${statusStr}). Try list_outputs again in a few seconds.`
+      );
+    }
+
     const outputs = entry.outputs ?? {};
     const files: OutputFile[] = [];
     for (const [nodeId, out] of Object.entries(outputs)) {
@@ -81,8 +105,12 @@ export async function listOutputs(promptId: string): Promise<OutputFile[]> {
   };
 
   for (let attempt = 0; attempt < LIST_OUTPUTS_MAX_RETRIES; attempt++) {
-    const files = await tryList();
-    if (files.length > 0) return files;
+    try {
+      const files = await tryList();
+      if (files.length > 0) return files;
+    } catch (e) {
+      if (attempt === LIST_OUTPUTS_MAX_RETRIES - 1) throw e;
+    }
     if (attempt < LIST_OUTPUTS_MAX_RETRIES - 1) {
       await new Promise((r) => setTimeout(r, LIST_OUTPUTS_RETRY_DELAY_MS));
     }
@@ -112,21 +140,43 @@ export async function downloadOutput(file: OutputFile, destPath: string): Promis
  * Download an output file by filename (no prompt_id needed). Uses GET /view.
  * Use when you have filename from get_history or get_last_output.
  * Returns the written path and size in bytes.
+ * When returnBase64 is true, does not write to disk; returns base64 data for remote MCP (MCP on one host, bash on another).
  */
 export async function downloadByFilename(
   filename: string,
   destPath: string,
-  options?: { subfolder?: string; type?: string }
-): Promise<{ path: string; size: number }> {
+  options?: { subfolder?: string; type?: string; returnBase64?: boolean }
+): Promise<{ path: string; size: number } | { filename: string; mime: string; encoding: 'base64'; data: string }> {
   const bytes = await comfyui.fetchOutputByFilename(filename, {
     subfolder: options?.subfolder,
     type: options?.type ?? 'output',
   });
+  const buffer = Buffer.from(bytes);
+
+  if (options?.returnBase64) {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const mime =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'jpg' || ext === 'jpeg'
+          ? 'image/jpeg'
+          : ext === 'webp'
+            ? 'image/webp'
+            : ext === 'gif'
+              ? 'image/gif'
+              : 'application/octet-stream';
+    return {
+      filename,
+      mime,
+      encoding: 'base64',
+      data: buffer.toString('base64'),
+    };
+  }
+
   const dir = dirname(destPath);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
-  const buffer = Buffer.from(bytes);
   writeFileSync(destPath, buffer);
   return { path: destPath, size: buffer.length };
 }

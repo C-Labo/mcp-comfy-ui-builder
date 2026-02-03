@@ -358,9 +358,23 @@ const DEFAULT_SYNC_TIMEOUT_MS = 300_000; // 5 minutes
 const POLL_FALLBACK_DELAY_MS = 3000; // delay before polling when WS shows 100% but no completed event
 const POLL_FALLBACK_TIMEOUT_MS = 10_000; // short poll timeout (execution already done on disk)
 
+/** ComfyUI history status_str values that mean execution is finished (no more queue). */
+const FINAL_STATUS_STRINGS = ['success', 'finished', 'error', 'canceled', 'cached'];
+
+function isHistoryEntryFinal(entry: HistoryEntry): boolean {
+  const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
+  const statusStr = statusObj?.status_str?.toLowerCase();
+  const hasError = Boolean(statusObj?.messages?.length);
+  if (hasError) return true;
+  if (statusStr && FINAL_STATUS_STRINGS.includes(statusStr)) return true;
+  const hasOutputs = entry.outputs && Object.keys(entry.outputs).length > 0;
+  return hasOutputs;
+}
+
 /**
  * Submit workflow and wait until execution completes (polling GET /history).
  * Returns prompt_id, status (completed/failed/timeout), and outputs from history.
+ * Only treats as completed when history status is final (success/finished/error) or has outputs.
  */
 export async function submitPromptAndWait(
   workflow: ComfyUIWorkflow,
@@ -372,8 +386,12 @@ export async function submitPromptAndWait(
     const entries = await getHistory(prompt_id);
     if (entries.length > 0) {
       const entry = entries[0];
-      const statusStr = (entry.status as { status_str?: string } | undefined)?.status_str;
-      const messages = (entry.status as { messages?: unknown[] } | undefined)?.messages;
+      if (!isHistoryEntryFinal(entry)) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        continue;
+      }
+      const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
+      const messages = statusObj?.messages ?? [];
       const hasError = Boolean(messages?.length);
       return {
         prompt_id,
@@ -526,7 +544,9 @@ async function waitWithWebSocket(
 }
 
 /**
- * Wait for execution completion using polling (fallback)
+ * Wait for execution completion using polling (fallback).
+ * Only returns completed/failed when history entry is final (status_str success/finished/error/canceled or has outputs).
+ * Avoids race: workflow still running in queue but polling saw empty/half-written history.
  */
 async function waitWithPolling(promptId: string, timeoutMs: number): Promise<ExecutionResult> {
   const deadline = Date.now() + timeoutMs;
@@ -534,8 +554,12 @@ async function waitWithPolling(promptId: string, timeoutMs: number): Promise<Exe
     const entries = await getHistory(promptId);
     if (entries.length > 0) {
       const entry = entries[0];
-      const statusStr = (entry.status as { status_str?: string } | undefined)?.status_str;
-      const messages = (entry.status as { messages?: unknown[] } | undefined)?.messages;
+      if (!isHistoryEntryFinal(entry)) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        continue;
+      }
+      const statusObj = entry.status as { status_str?: string; messages?: unknown[] } | undefined;
+      const messages = statusObj?.messages ?? [];
       const hasError = Boolean(messages?.length);
       return {
         prompt_id: promptId,

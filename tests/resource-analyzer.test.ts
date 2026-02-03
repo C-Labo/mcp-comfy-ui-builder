@@ -1,9 +1,9 @@
 /**
- * Unit tests for resource-analyzer (analyzeSystemResources).
+ * Unit tests for resource-analyzer (analyzeSystemResources, getWorkflowResolution).
  */
 import { describe, it, expect } from 'vitest';
-import { analyzeSystemResources } from '../src/resource-analyzer.js';
-import type { SystemStatsResponse } from '../src/types/comfyui-api-types.js';
+import { analyzeSystemResources, getWorkflowResolution } from '../src/resource-analyzer.js';
+import type { SystemStatsResponse, ComfyUIWorkflow } from '../src/types/comfyui-api-types.js';
 
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -87,6 +87,25 @@ describe('resource-analyzer', () => {
       expect(rec.raw!.vram_total_bytes).toBe(8 * BYTES_PER_GB);
       expect(rec.vram_total_gb).toBe(8);
       expect(rec.ram_total_gb).toBe(16);
+    });
+  });
+
+  describe('getWorkflowResolution', () => {
+    it('returns max width/height from EmptyLatentImage', () => {
+      const workflow: ComfyUIWorkflow = {
+        '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'x.safetensors' } },
+        '5': { class_type: 'EmptyLatentImage', inputs: { width: 1024, height: 768, batch_size: 1 } },
+      };
+      const dims = getWorkflowResolution(workflow);
+      expect(dims).toEqual({ width: 1024, height: 768 });
+    });
+
+    it('returns null when no width/height in workflow', () => {
+      const workflow: ComfyUIWorkflow = {
+        '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: 'x.safetensors' } },
+      };
+      const dims = getWorkflowResolution(workflow);
+      expect(dims).toBeNull();
     });
   });
 });

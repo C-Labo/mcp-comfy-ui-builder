@@ -8,6 +8,22 @@ Project change history. Knowledge base (nodes) → [knowledge/CHANGELOG.md](know
 
 ---
 
+## [2.2.0] – 2026-02-03
+
+### Fixed (live findings: race conditions, remote download, OOM, interrupt)
+
+- **execute_workflow_sync premature completed:** Polling now treats as finished only when history entry is final (`status_str` in `success`/`finished`/`error`/`canceled`/`cached`) or has outputs. Avoids race where workflow is still running in queue but MCP returned `completed` with no outputs. [src/comfyui-client.ts](src/comfyui-client.ts) — `isHistoryEntryFinal()`, `waitWithPolling()`, `submitPromptAndWait()`.
+- **list_outputs when prompt still running:** If prompt exists in history but status is not final and no outputs, `listOutputs` now throws a clear error: "Prompt … is not completed yet (status: running). Try list_outputs again in a few seconds." [src/output-manager.ts](src/output-manager.ts).
+- **download_by_filename for remote MCP:** New option `return_base64`. When true, file is not written to disk; returns `{ filename, mime, encoding: "base64", data }` so the client (e.g. bash on another host) can save the file locally. [src/output-manager.ts](src/output-manager.ts), [src/mcp-server.ts](src/mcp-server.ts).
+- **FLUX / large resolution OOM:** Before submitting a workflow, `execute_workflow_sync` now checks workflow width/height against `get_system_resources` recommendations. If resolution exceeds `max_width`×`max_height`, submission is rejected with a clear error to avoid OOM (e.g. FLUX on MPS). [src/resource-analyzer.ts](src/resource-analyzer.ts) — `getWorkflowResolution()`, [src/mcp-server.ts](src/mcp-server.ts).
+- **interrupt_execution not freeing GPU:** New optional parameter `cleanup_after_ms`. When set (and `prompt_id` given), after sending interrupt the tool polls the queue and removes the prompt if still there, so the next job can run. [src/mcp-server.ts](src/mcp-server.ts).
+
+### Tests
+
+- **comfyui-client.test.ts:** Test that `submitPromptAndWait` does not return completed when history has `status_str: 'running'` and no outputs; only completes after final status/outputs.
+
+---
+
 ## [2.1.6] – 2026-02-03
 
 ### Fixed (Bug_Report_3 — timing, download_by_filename)

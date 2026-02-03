@@ -326,4 +326,4 @@ Replace the path in `command` with your `which node` result; keep `args` as the 
 
 ***
 
-*MCP Setup v2.1.0 - get_history, get_last_output, download_by_filename, get_generation_recommendations* | *2026-02-03*
+*MCP Setup v2.2.0 - get_history, get_last_output, download_by_filename, get_generation_recommendations* | *2026-02-03*

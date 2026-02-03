@@ -41,7 +41,7 @@ import { listMacros, getMacro, insertMacro as insertMacroIntoContext, registerPl
 import { executeChain } from './workflow/chainer.js';
 import type { ComfyUIWorkflow } from './types/comfyui-api-types.js';
 import { loadPlugins, summarizePlugins, type LoadedPlugin } from './plugins/plugin-loader.js';
-import { analyzeSystemResources } from './resource-analyzer.js';
+import { analyzeSystemResources, getWorkflowResolution } from './resource-analyzer.js';
 
 /** Keywords that suggest the user wants legible text in the generated image. */
 const TEXT_IN_IMAGE_KEYWORDS = [
@@ -142,7 +142,7 @@ function initPlugins(): void {
 }
 
 const server = new McpServer(
-  { name: 'mcp-comfy-ui-builder', version: '2.1.0' },
+  { name: 'mcp-comfy-ui-builder', version: '2.2.0' },
   { capabilities: { tools: {} } }
 );
 
@@ -178,14 +178,25 @@ server.registerTool(
 
 /** Convert live NodeInfo to NodeDescription-like shape for get_node_info response. */
 function liveNodeInfoToDescription(info: import('./node-discovery/hybrid-discovery.js').NodeInfo): Record<string, unknown> {
-  const required: Record<string, { type: string; default?: unknown }> = {};
+  const required: Record<string, { type: string; default?: unknown; choices?: string[] }> = {};
   for (const [name, value] of Object.entries(info.input.required ?? {})) {
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string') {
-      const config = (value as [string, Record<string, unknown>?])[1];
-      required[name] = {
-        type: value[0],
-        ...(config?.default !== undefined && { default: config.default }),
-      };
+    if (Array.isArray(value) && value.length > 0) {
+      const [first, config] = value as [unknown, Record<string, unknown>?];
+      if (typeof first === 'string') {
+        required[name] = {
+          type: first,
+          ...(config?.default !== undefined && { default: config.default }),
+        };
+      } else if (Array.isArray(first) && first.every((opt) => typeof opt === 'string')) {
+        // Enum-style input (e.g. sampler_name, scheduler): expose as COMBO with choices
+        required[name] = {
+          type: 'COMBO',
+          choices: first,
+          ...(config?.default !== undefined && { default: config.default }),
+        };
+      } else {
+        required[name] = { type: 'UNKNOWN' };
+      }
     } else if (typeof value === 'string') {
       required[name] = { type: value };
     } else {
@@ -769,6 +780,30 @@ server.registerTool(
     if (!validation.valid) {
       return { content: [{ type: 'text', text: `Workflow validation failed:\n${validation.errors.join('\n')}` }] };
     }
+    try {
+      const stats = await comfyui.getSystemStats();
+      const rec = analyzeSystemResources(stats);
+      const dims = getWorkflowResolution(parsed);
+      if (dims && (dims.width > rec.max_width || dims.height > rec.max_height)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  status: 'failed',
+                  error: `Requested resolution ${dims.width}×${dims.height} exceeds recommended ${rec.max_width}×${rec.max_height} for this GPU (${rec.gpu_name}, ${rec.vram_total_gb}GB VRAM). Call get_system_resources or lower width/height to avoid OOM.`,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+    } catch {
+      // If get_system_stats fails (e.g. ComfyUI busy), proceed without resolution guard
+    }
     const streamProgress = args.stream_progress ?? true;
     const progressUpdates: string[] = [];
     let prompt_id: string | undefined;
@@ -1195,12 +1230,13 @@ server.registerTool(
   'download_by_filename',
   {
     description:
-      'Download an output file by filename (no prompt_id needed). Uses GET /view. Use when you have filename from get_history or get_last_output (e.g. after execute_workflow_sync did not return prompt_id). Requires COMFYUI_HOST.',
+      'Download an output file by filename (no prompt_id needed). Uses GET /view. Use when you have filename from get_history or get_last_output. If return_base64 is true, file is not written to disk; returns base64 data (for remote MCP when bash runs on another host). Requires COMFYUI_HOST.',
     inputSchema: {
       filename: z.string().describe('Output filename (e.g. from get_last_output or get_history)'),
-      dest_path: z.string().describe('Local path to save the file'),
+      dest_path: z.string().describe('Local path to save the file (ignored when return_base64 is true)'),
       subfolder: z.string().optional().describe('Subfolder (default empty)'),
       type: z.string().optional().describe('View type (default "output")'),
+      return_base64: z.boolean().optional().describe('If true, return file as base64 instead of writing to dest_path (for remote MCP)'),
     },
   },
   async (args) => {
@@ -1211,6 +1247,7 @@ server.registerTool(
       const result = await downloadByFilename(args.filename, args.dest_path, {
         subfolder: args.subfolder,
         type: args.type ?? 'output',
+        returnBase64: args.return_base64 ?? false,
       });
       return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     } catch (e) {
@@ -1827,13 +1864,24 @@ server.registerTool(
   }
 );
 
+function isPromptInQueue(queue: { queue_running: unknown[]; queue_pending: unknown[] }, promptId: string): boolean {
+  const match = (item: unknown) =>
+    (Array.isArray(item) && item[0] === promptId) ||
+    (item && typeof item === 'object' && (item as { prompt_id?: string }).prompt_id === promptId);
+  return (
+    queue.queue_running.some(match) ||
+    queue.queue_pending.some(match)
+  );
+}
+
 server.registerTool(
   'interrupt_execution',
   {
     description:
-      'Stop the currently running workflow on ComfyUI. Optionally pass prompt_id to interrupt only that prompt. Requires COMFYUI_HOST.',
+      'Stop the currently running workflow on ComfyUI. Optionally pass prompt_id to interrupt only that prompt. If cleanup_after_ms is set (and prompt_id given), after interrupt the tool will poll the queue and remove the prompt from queue if it is still there (frees GPU for next job). Requires COMFYUI_HOST.',
     inputSchema: {
       prompt_id: z.string().optional().describe('Optional: interrupt only this prompt if it is running; omit to interrupt current run'),
+      cleanup_after_ms: z.number().int().min(0).optional().describe('If set (and prompt_id given), after interrupt poll queue and remove prompt if still running (e.g. 5000). Helps free GPU after FLUX/interrupt.'),
     },
   },
   async (args) => {
@@ -1849,10 +1897,23 @@ server.registerTool(
     }
     try {
       await comfyui.interruptExecution(args.prompt_id);
-      const msg = args.prompt_id
-        ? `Interrupt sent for prompt_id: ${args.prompt_id}.`
-        : 'Interrupt sent. Current execution will stop.';
-      return { content: [{ type: 'text', text: msg }] };
+      const lines: string[] = [
+        args.prompt_id ? `Interrupt sent for prompt_id: ${args.prompt_id}.` : 'Interrupt sent. Current execution will stop.',
+      ];
+      if (args.prompt_id && args.cleanup_after_ms != null && args.cleanup_after_ms > 0) {
+        const waitMs = Math.min(args.cleanup_after_ms, 8000);
+        await new Promise((r) => setTimeout(r, Math.min(1500, waitMs)));
+        try {
+          const queue = await comfyui.getQueue();
+          if (isPromptInQueue(queue, args.prompt_id)) {
+            await comfyui.deleteQueueItems([args.prompt_id]);
+            lines.push('Prompt was still in queue; removed so next job can run.');
+          }
+        } catch {
+          lines.push('Could not check/clear queue; use delete_queue_items or clear_queue if the next job stays stuck.');
+        }
+      }
+      return { content: [{ type: 'text', text: lines.join(' ') }] };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return { content: [{ type: 'text', text: `interrupt_execution failed: ${msg}` }] };
